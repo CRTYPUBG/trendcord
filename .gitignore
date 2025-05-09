@@ -1,0 +1,43 @@
+# Veritabanı
+*.db
+*.sqlite3
+
+# Ortam değişkenleri
+.env
+
+# Python dosyaları
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Sanal ortamlar
+venv/
+ENV/
+env/
+
+# IDE dosyaları
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# İşletim sistemi dosyaları
+.DS_Store
+Thumbs.db 

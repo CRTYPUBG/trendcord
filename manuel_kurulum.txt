@@ -1,0 +1,23 @@
+# Manuel Kurulum Talimatları
+# Windows'ta pip sorunları yaşıyorsanız, aşağıdaki komutları tek tek çalıştırın:
+
+# Discord.py kurulumu
+python -m pip install discord.py==2.3.2
+
+# Python-dotenv kurulumu
+python -m pip install python-dotenv==1.0.0
+
+# Requests kurulumu
+python -m pip install requests==2.31.0
+
+# BeautifulSoup4 kurulumu
+python -m pip install beautifulsoup4==4.12.2
+
+# Aiohttp kurulumu
+python -m pip install aiohttp==3.9.1
+
+# Veritabanı oluşturma
+python init_db.py
+
+# Botu başlatma
+python main.py 
