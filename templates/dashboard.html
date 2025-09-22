@@ -1,0 +1,386 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - Trendyol Bot{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-8">
+    <!-- Header -->
+    <div class="mb-8">
+        <h1 class="text-4xl font-bold mb-2">
+            <i class="fas fa-tachometer-alt text-primary"></i>
+            Dashboard
+        </h1>
+        <p class="text-base-content/70">Trendyol Bot yönetim paneli</p>
+    </div>
+
+    <!-- Stats Cards -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <!-- Total Products -->
+        <div class="card bg-gradient-to-br from-primary to-primary-focus text-primary-content shadow-xl card-hover">
+            <div class="card-body">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <h2 class="card-title text-2xl">{{ stats.total_products }}</h2>
+                        <p class="opacity-80">Toplam Ürün</p>
+                    </div>
+                    <div class="text-4xl opacity-80">
+                        <i class="fas fa-box"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Total Guilds -->
+        <div class="card bg-gradient-to-br from-secondary to-secondary-focus text-secondary-content shadow-xl card-hover">
+            <div class="card-body">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <h2 class="card-title text-2xl">{{ stats.total_guilds }}</h2>
+                        <p class="opacity-80">Aktif Sunucu</p>
+                    </div>
+                    <div class="text-4xl opacity-80">
+                        <i class="fas fa-server"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Bot Status -->
+        <div class="card bg-gradient-to-br from-accent to-accent-focus text-accent-content shadow-xl card-hover">
+            <div class="card-body">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <h2 class="card-title text-lg">
+                            {% if bot_status.running %}
+                                <div class="badge badge-success">Çalışıyor</div>
+                            {% else %}
+                                <div class="badge badge-warning">Durdu</div>
+                            {% endif %}
+                        </h2>
+                        <p class="opacity-80">Bot Durumu</p>
+                    </div>
+                    <div class="text-4xl opacity-80">
+                        <i class="fas fa-robot"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Admin Count -->
+        <div class="card bg-gradient-to-br from-warning to-warning-focus text-warning-content shadow-xl card-hover">
+            <div class="card-body">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <h2 class="card-title text-2xl">{{ admin_count }}</h2>
+                        <p class="opacity-80">Global Admin</p>
+                    </div>
+                    <div class="text-4xl opacity-80">
+                        <i class="fas fa-crown"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Content Grid -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <!-- Recent Products -->
+        <div class="lg:col-span-2">
+            <div class="card bg-base-200 shadow-xl">
+                <div class="card-body">
+                    <h2 class="card-title mb-4">
+                        <i class="fas fa-clock text-primary"></i>
+                        Son Eklenen Ürünler
+                    </h2>
+                    
+                    {% if stats.recent_products %}
+                    <div class="overflow-x-auto">
+                        <table class="table table-zebra">
+                            <thead>
+                                <tr>
+                                    <th>Ürün</th>
+                                    <th>Fiyat</th>
+                                    <th>Sunucu</th>
+                                    <th>Tarih</th>
+                                    <th>İşlemler</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for product in stats.recent_products %}
+                                <tr data-product-id="{{ product.product_id }}">
+                                    <td>
+                                        <div class="flex items-center space-x-3">
+                                            {% if product.image_url %}
+                                            <div class="avatar">
+                                                <div class="mask mask-squircle w-12 h-12">
+                                                    <img src="{{ product.image_url }}" alt="Ürün" />
+                                                </div>
+                                            </div>
+                                            {% endif %}
+                                            <div>
+                                                <div class="font-bold">{{ product.name[:50] }}{% if product.name|length > 50 %}...{% endif %}</div>
+                                                <div class="text-sm opacity-50">ID: {{ product.product_id }}</div>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <span class="price font-bold text-primary">{{ "%.2f"|format(product.current_price) }} TL</span>
+                                        {% if product.original_price and product.original_price != product.current_price %}
+                                        <br><span class="text-sm line-through opacity-50">{{ "%.2f"|format(product.original_price) }} TL</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <div class="badge badge-outline">{{ product.guild_id[:8] }}...</div>
+                                    </td>
+                                    <td>
+                                        <span class="text-sm">{{ product.added_at[:10] }}</span>
+                                    </td>
+                                    <td>
+                                        <div class="flex space-x-2">
+                                            <button class="btn btn-sm btn-primary" onclick="viewProduct('{{ product.product_id }}')">
+                                                <i class="fas fa-eye"></i>
+                                            </button>
+                                            <button class="btn btn-sm btn-error" onclick="deleteProduct('{{ product.product_id }}')">
+                                                <i class="fas fa-trash"></i>
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="text-center py-8">
+                        <i class="fas fa-box-open text-6xl opacity-20 mb-4"></i>
+                        <p class="text-lg opacity-70">Henüz ürün eklenmemiş</p>
+                        <a href="/add_product" class="btn btn-primary mt-4">
+                            <i class="fas fa-plus"></i>
+                            İlk Ürünü Ekle
+                        </a>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Guild Stats & Quick Actions -->
+        <div class="space-y-6">
+            <!-- Guild Stats -->
+            <div class="card bg-base-200 shadow-xl">
+                <div class="card-body">
+                    <h2 class="card-title mb-4">
+                        <i class="fas fa-chart-bar text-secondary"></i>
+                        Sunucu İstatistikleri
+                    </h2>
+                    
+                    {% if stats.guild_stats %}
+                    <div class="space-y-3">
+                        {% for guild in stats.guild_stats %}
+                        <div class="flex items-center justify-between p-3 bg-base-100 rounded-lg">
+                            <div>
+                                <div class="font-semibold">Sunucu {{ guild.guild_id[:8] }}...</div>
+                                <div class="text-sm opacity-70">{{ guild.product_count }} ürün</div>
+                            </div>
+                            <div class="text-right">
+                                <div class="badge badge-primary">{{ guild.product_count }}</div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    
+                    <div class="card-actions justify-end mt-4">
+                        <a href="/products" class="btn btn-sm btn-outline">
+                            Tümünü Gör
+                            <i class="fas fa-arrow-right"></i>
+                        </a>
+                    </div>
+                    {% else %}
+                    <div class="text-center py-4">
+                        <i class="fas fa-server text-4xl opacity-20 mb-2"></i>
+                        <p class="opacity-70">Henüz sunucu yok</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Quick Actions -->
+            <div class="card bg-base-200 shadow-xl">
+                <div class="card-body">
+                    <h2 class="card-title mb-4">
+                        <i class="fas fa-bolt text-warning"></i>
+                        Hızlı İşlemler
+                    </h2>
+                    
+                    <div class="space-y-3">
+                        <a href="/add_product" class="btn btn-primary btn-block">
+                            <i class="fas fa-plus"></i>
+                            Yeni Ürün Ekle
+                        </a>
+                        
+                        <button class="btn btn-secondary btn-block" onclick="refreshStats()">
+                            <i class="fas fa-sync-alt"></i>
+                            İstatistikleri Yenile
+                        </button>
+                        
+                        <a href="/settings" class="btn btn-outline btn-block">
+                            <i class="fas fa-cog"></i>
+                            Ayarlar
+                        </a>
+                        
+                        <button class="btn btn-accent btn-block" onclick="testConnection()">
+                            <i class="fas fa-wifi"></i>
+                            Bağlantı Testi
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- System Status -->
+            <div class="card bg-base-200 shadow-xl">
+                <div class="card-body">
+                    <h2 class="card-title mb-4">
+                        <i class="fas fa-heartbeat text-error"></i>
+                        Sistem Durumu
+                    </h2>
+                    
+                    <div class="space-y-3">
+                        <div class="flex items-center justify-between">
+                            <span>Database</span>
+                            <div class="badge badge-success">Çalışıyor</div>
+                        </div>
+                        
+                        <div class="flex items-center justify-between">
+                            <span>Scraper</span>
+                            <div class="badge badge-success">Hazır</div>
+                        </div>
+                        
+                        <div class="flex items-center justify-between">
+                            <span>WebSocket</span>
+                            <div class="badge badge-success" id="websocket-status">Bağlı</div>
+                        </div>
+                        
+                        <div class="flex items-center justify-between">
+                            <span>Son Kontrol</span>
+                            <span class="text-sm bot-status">
+                                {% if bot_status.last_check %}
+                                {{ bot_status.last_check[:16] }}
+                                {% else %}
+                                Henüz yok
+                                {% endif %}
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Dashboard specific functions
+    function viewProduct(productId) {
+        // Redirect to product detail or open modal
+        window.open(`https://www.trendyol.com/sr?q=&pi=${productId}`, '_blank');
+    }
+
+    function deleteProduct(productId) {
+        if (confirm('Bu ürünü silmek istediğinizden emin misiniz?')) {
+            fetch('/api/delete_product', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    product_id: productId
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showToast('Ürün başarıyla silindi', 'success');
+                } else {
+                    showToast('Ürün silinemedi: ' + data.error, 'error');
+                }
+            })
+            .catch(error => {
+                showToast('Hata: ' + error.message, 'error');
+            });
+        }
+    }
+
+    function refreshStats() {
+        const btn = event.target;
+        showLoading(btn);
+        
+        fetch('/api/stats')
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showToast('İstatistikler yenilendi', 'success');
+                setTimeout(() => location.reload(), 1000);
+            } else {
+                showToast('İstatistikler yenilenemedi', 'error');
+            }
+        })
+        .catch(error => {
+            showToast('Hata: ' + error.message, 'error');
+        })
+        .finally(() => {
+            hideLoading(btn, '<i class="fas fa-sync-alt"></i> İstatistikleri Yenile');
+        });
+    }
+
+    function testConnection() {
+        const btn = event.target;
+        showLoading(btn);
+        
+        fetch('/api/stats')
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showToast('Bağlantı başarılı!', 'success');
+            } else {
+                showToast('Bağlantı hatası', 'error');
+            }
+        })
+        .catch(error => {
+            showToast('Bağlantı başarısız: ' + error.message, 'error');
+        })
+        .finally(() => {
+            hideLoading(btn, '<i class="fas fa-wifi"></i> Bağlantı Testi');
+        });
+    }
+
+    // WebSocket status monitoring
+    socket.on('connect', function() {
+        document.getElementById('websocket-status').textContent = 'Bağlı';
+        document.getElementById('websocket-status').className = 'badge badge-success';
+    });
+
+    socket.on('disconnect', function() {
+        document.getElementById('websocket-status').textContent = 'Bağlantı Kesildi';
+        document.getElementById('websocket-status').className = 'badge badge-error';
+    });
+
+    // Auto refresh stats every 30 seconds
+    setInterval(() => {
+        fetch('/api/stats')
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Update stats without page reload
+                const totalProducts = document.querySelector('.card-body h2.card-title');
+                if (totalProducts) {
+                    totalProducts.textContent = data.total_products;
+                }
+            }
+        })
+        .catch(error => {
+            console.log('Stats update failed:', error);
+        });
+    }, 30000);
+</script>
+{% endblock %}

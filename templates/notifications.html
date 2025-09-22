@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bildirimler - Trendyol Bot</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        .notification-card { border-left: 4px solid #007bff; }
+        .target-card { border-left: 4px solid #28a745; }
+        .alert-card { border-left: 4px solid #ffc107; }
+        .unread { background-color: #f8f9fa; font-weight: bold; }
+        .price-target { background: linear-gradient(135deg, #28a745 0%, #20c997 100%); color: white; }
+    </style>
+</head>
+<body class="bg-light">
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+        <div class="container">
+            <a class="navbar-brand" href="/">
+                <i class="fas fa-bell me-2"></i>Trendyol Bot - Bildirimler
+            </a>
+            <div class="navbar-nav ms-auto">
+                <a class="nav-link" href="/"><i class="fas fa-home"></i> Ana Sayfa</a>
+                <a class="nav-link" href="/products"><i class="fas fa-box"></i> Ürünler</a>
+                <a class="nav-link" href="/analytics"><i class="fas fa-chart-bar"></i> Analitik</a>
+                <a class="nav-link active" href="/notifications"><i class="fas fa-bell"></i> Bildirimler</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mt-4">
+        <!-- Bildirim Özeti -->
+        <div class="row mb-4">
+            <div class="col-md-3">
+                <div class="card text-center">
+                    <div class="card-body">
+                        <h5 class="card-title text-primary">
+                            <i class="fas fa-bell fa-2x"></i>
+                        </h5>
+                        <h3 id="totalNotifications">0</h3>
+                        <p class="card-text">Toplam Bildirim</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card text-center">
+                    <div class="card-body">
+                        <h5 class="card-title text-warning">
+                            <i class="fas fa-envelope fa-2x"></i>
+                        </h5>
+                        <h3 id="unreadNotifications">0</h3>
+                        <p class="card-text">Okunmamış</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card text-center">
+                    <div class="card-body">
+                        <h5 class="card-title text-success">
+                            <i class="fas fa-bullseye fa-2x"></i>
+                        </h5>
+                        <h3 id="activeTargets">0</h3>
+                        <p class="card-text">Aktif Hedefler</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card text-center">
+                    <div class="card-body">
+                        <h5 class="card-title text-info">
+                            <i class="fas fa-chart-line fa-2x"></i>
+                        </h5>
+                        <h3 id="todayAlerts">0</h3>
+                        <p class="card-text">Bugünkü Uyarılar</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Fiyat Hedefi Ekleme -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card price-target">
+                    <div class="card-header">
+                        <h5 class="mb-0"><i class="fas fa-plus me-2"></i>Yeni Fiyat Hedefi Ekle</h5>
+                    </div>
+                    <div class="card-body">
+                        <form id="addTargetForm">
+                            <div class="row">
+                                <div class="col-md-4">
+                                    <label for="productUrl" class="form-label">Ürün URL'si veya ID</label>
+                                    <input type="text" class="form-control" id="productUrl" placeholder="https://www.trendyol.com/..." required>
+                                </div>
+                                <div class="col-md-3">
+                                    <label for="targetPrice" class="form-label">Hedef Fiyat (₺)</label>
+                                    <input type="number" class="form-control" id="targetPrice" step="0.01" min="0" placeholder="299.99" required>
+                                </div>
+                                <div class="col-md-3">
+                                    <label for="condition" class="form-label">Koşul</label>
+                                    <select class="form-select" id="condition" required>
+                                        <option value="below">Altına düştüğünde</option>
+                                        <option value="above">Üstüne çıktığında</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-2">
+                                    <label class="form-label">&nbsp;</label>
+                                    <button type="submit" class="btn btn-light w-100">
+                                        <i class="fas fa-plus"></i> Ekle
+                                    </button>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Aktif Fiyat Hedefleri -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header bg-success text-white">
+                        <h5 class="mb-0"><i class="fas fa-bullseye me-2"></i>Aktif Fiyat Hedefleri</h5>
+                    </div>
+                    <div class="card-body">
+                        <div id="priceTargets">
+                            <div class="text-center text-muted py-4">
+                                <i class="fas fa-bullseye fa-3x mb-3"></i>
+                                <p>Henüz aktif fiyat hedefiniz bulunmuyor.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Bildirim Geçmişi -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header bg-info text-white d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0"><i class="fas fa-history me-2"></i>Bildirim Geçmişi</h5>
+                        <button class="btn btn-light btn-sm" onclick="markAllRead()">
+                            <i class="fas fa-check"></i> Tümünü Okundu İşaretle
+                        </button>
+                    </div>
+                    <div class="card-body">
+                        <div id="notificationHistory">
+                            <div class="text-center text-muted py-4">
+                                <i class="fas fa-bell fa-3x mb-3"></i>
+                                <p>Henüz bildirim geçmişiniz bulunmuyor.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Sayfa yüklendiğinde verileri getir
+        document.addEventListener('DOMContentLoaded', function() {
+            loadNotificationData();
+        });
+
+        function loadNotificationData() {
+            // Fiyat hedeflerini yükle
+            loadPriceTargets();
+            
+            // Bildirim geçmişini yükle
+            loadNotificationHistory();
+            
+            // İstatistikleri güncelle
+            updateStats();
+        }
+
+        function loadPriceTargets() {
+            fetch('/api/price_targets')
+                .then(response => response.json())
+                .then(data => {
+                    const container = document.getElementById('priceTargets');
+                    
+                    if (data.success && data.targets && data.targets.length > 0) {
+                        let html = '';
+                        
+                        data.targets.forEach(target => {
+                            const conditionText = target.condition === 'below' ? 'altına düşerse' : 'üstüne çıkarsa';
+                            const conditionIcon = target.condition === 'below' ? 'fa-arrow-down text-success' : 'fa-arrow-up text-danger';
+                            
+                            // Hedefe ne kadar kaldığını hesapla
+                            const distance = target.condition === 'below' 
+                                ? target.current_price - target.target_price
+                                : target.target_price - target.current_price;
+                            
+                            const distanceText = distance > 0 
+                                ? `₺${distance.toFixed(2)} ${target.condition === 'below' ? 'daha düşmeli' : 'daha yükselmeli'}`
+                                : '🎉 Hedef gerçekleşti!';
+                            
+                            html += `
+                                <div class="card target-card mb-3">
+                                    <div class="card-body">
+                                        <div class="row align-items-center">
+                                            <div class="col-md-6">
+                                                <h6 class="card-title mb-1">${target.product_name}</h6>
+                                                <small class="text-muted">Hedef ID: ${target.id}</small>
+                                            </div>
+                                            <div class="col-md-2">
+                                                <div class="text-center">
+                                                    <i class="fas ${conditionIcon}"></i>
+                                                    <div>₺${target.target_price.toFixed(2)}</div>
+                                                    <small>${conditionText}</small>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-2">
+                                                <div class="text-center">
+                                                    <div class="fw-bold">₺${target.current_price.toFixed(2)}</div>
+                                                    <small>Mevcut Fiyat</small>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-2">
+                                                <button class="btn btn-danger btn-sm w-100" onclick="removeTarget(${target.id})">
+                                                    <i class="fas fa-trash"></i> Kaldır
+                                                </button>
+                                            </div>
+                                        </div>
+                                        <div class="mt-2">
+                                            <small class="text-info">${distanceText}</small>
+                                        </div>
+                                    </div>
+                                </div>
+                            `;
+                        });
+                        
+                        container.innerHTML = html;
+                    } else {
+                        container.innerHTML = `
+                            <div class="text-center text-muted py-4">
+                                <i class="fas fa-bullseye fa-3x mb-3"></i>
+                                <p>Henüz aktif fiyat hedefiniz bulunmuyor.</p>
+                            </div>
+                        `;
+                    }
+                })
+                .catch(error => {
+                    console.error('Fiyat hedefleri yüklenirken hata:', error);
+                });
+        }
+
+        function loadNotificationHistory() {
+            fetch('/api/notification_history')
+                .then(response => response.json())
+                .then(data => {
+                    const container = document.getElementById('notificationHistory');
+                    
+                    if (data.success && data.notifications && data.notifications.length > 0) {
+                        let html = '';
+                        
+                        data.notifications.forEach(notification => {
+                            const typeIcons = {
+                                'price_target': 'fa-bullseye text-success',
+                                'price_drop': 'fa-arrow-down text-success',
+                                'price_increase': 'fa-arrow-up text-danger',
+                                'daily_summary': 'fa-chart-bar text-info'
+                            };
+                            
+                            const icon = typeIcons[notification.notification_type] || 'fa-bell text-primary';
+                            const readClass = notification.is_read ? '' : 'unread';
+                            const readIcon = notification.is_read ? 'fa-envelope-open' : 'fa-envelope';
+                            
+                            const date = new Date(notification.sent_at).toLocaleDateString('tr-TR');
+                            const time = new Date(notification.sent_at).toLocaleTimeString('tr-TR');
+                            
+                            html += `
+                                <div class="card notification-card mb-2 ${readClass}">
+                                    <div class="card-body py-2">
+                                        <div class="row align-items-center">
+                                            <div class="col-md-1 text-center">
+                                                <i class="fas ${icon}"></i>
+                                            </div>
+                                            <div class="col-md-8">
+                                                <div class="mb-1">${notification.message}</div>
+                                                <small class="text-muted">
+                                                    ${notification.product_name || 'Genel'} • ${date} ${time}
+                                                </small>
+                                            </div>
+                                            <div class="col-md-2 text-center">
+                                                <i class="fas ${readIcon} ${notification.is_read ? 'text-muted' : 'text-warning'}"></i>
+                                            </div>
+                                            <div class="col-md-1">
+                                                ${notification.product_url ? `
+                                                    <a href="${notification.product_url}" target="_blank" class="btn btn-sm btn-outline-primary">
+                                                        <i class="fas fa-external-link-alt"></i>
+                                                    </a>
+                                                ` : ''}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            `;
+                        });
+                        
+                        container.innerHTML = html;
+                    } else {
+                        container.innerHTML = `
+                            <div class="text-center text-muted py-4">
+                                <i class="fas fa-bell fa-3x mb-3"></i>
+                                <p>Henüz bildirim geçmişiniz bulunmuyor.</p>
+                            </div>
+                        `;
+                    }
+                })
+                .catch(error => {
+                    console.error('Bildirim geçmişi yüklenirken hata:', error);
+                });
+        }
+
+        function updateStats() {
+            // Bu fonksiyon gerçek API'den istatistikleri alacak
+            // Şimdilik örnek veriler
+            document.getElementById('totalNotifications').textContent = '0';
+            document.getElementById('unreadNotifications').textContent = '0';
+            document.getElementById('activeTargets').textContent = '0';
+            document.getElementById('todayAlerts').textContent = '0';
+        }
+
+        // Fiyat hedefi ekleme
+        document.getElementById('addTargetForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const formData = {
+                product_url: document.getElementById('productUrl').value,
+                target_price: parseFloat(document.getElementById('targetPrice').value),
+                condition: document.getElementById('condition').value
+            };
+            
+            fetch('/api/add_price_target', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(formData)
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert('Fiyat hedefi başarıyla eklendi!');
+                    document.getElementById('addTargetForm').reset();
+                    loadPriceTargets();
+                } else {
+                    alert('Hata: ' + (data.error || 'Bilinmeyen hata'));
+                }
+            })
+            .catch(error => {
+                console.error('Fiyat hedefi eklenirken hata:', error);
+                alert('Fiyat hedefi eklenirken bir hata oluştu');
+            });
+        });
+
+        function removeTarget(targetId) {
+            if (confirm('Bu fiyat hedefini kaldırmak istediğinizden emin misiniz?')) {
+                fetch('/api/remove_price_target', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ target_id: targetId })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        alert('Fiyat hedefi kaldırıldı!');
+                        loadPriceTargets();
+                    } else {
+                        alert('Hata: ' + (data.error || 'Bilinmeyen hata'));
+                    }
+                })
+                .catch(error => {
+                    console.error('Fiyat hedefi kaldırılırken hata:', error);
+                    alert('Fiyat hedefi kaldırılırken bir hata oluştu');
+                });
+            }
+        }
+
+        function markAllRead() {
+            fetch('/api/mark_notifications_read', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert('Tüm bildirimler okundu olarak işaretlendi!');
+                    loadNotificationHistory();
+                } else {
+                    alert('Hata: ' + (data.error || 'Bilinmeyen hata'));
+                }
+            })
+            .catch(error => {
+                console.error('Bildirimler işaretlenirken hata:', error);
+                alert('Bildirimler işaretlenirken bir hata oluştu');
+            });
+        }
+    </script>
+</body>
+</html>

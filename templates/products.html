@@ -1,0 +1,263 @@
+{% extends "base.html" %}
+
+{% block title %}Ürünler - Trendyol Bot{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-8">
+    <!-- Header -->
+    <div class="mb-8">
+        <h1 class="text-4xl font-bold mb-2">
+            <i class="fas fa-box text-primary"></i>
+            Ürünler
+        </h1>
+        <p class="text-base-content/70">Takip edilen tüm ürünler</p>
+    </div>
+
+    <!-- Filters -->
+    <div class="card bg-base-200 shadow-xl mb-8">
+        <div class="card-body">
+            <div class="flex flex-col lg:flex-row gap-4 items-center">
+                <div class="form-control flex-1">
+                    <label class="label">
+                        <span class="label-text">Sunucu Filtresi</span>
+                    </label>
+                    <select class="select select-bordered" onchange="filterByGuild(this.value)">
+                        <option value="">Tüm Sunucular</option>
+                        {% for guild in guild_stats %}
+                        <option value="{{ guild.guild_id }}" {% if current_guild==guild.guild_id %}selected{% endif %}>
+                            Sunucu {{ guild.guild_id[:8] }}... ({{ guild.product_count }} ürün)
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="form-control">
+                    <label class="label">
+                        <span class="label-text">Toplam</span>
+                    </label>
+                    <div class="badge badge-primary badge-lg">
+                        {{ total_products }} ürün
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Products Grid -->
+    {% if products %}
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+        {% for product in products %}
+        <div class="card bg-base-200 shadow-xl card-hover" data-product-id="{{ product.product_id }}">
+            <figure class="px-4 pt-4">
+                {% if product.image_url %}
+                <img src="{{ product.image_url }}" alt="{{ product.name }}"
+                    class="rounded-xl w-full h-48 object-cover" />
+                {% else %}
+                <div class="w-full h-48 bg-base-300 rounded-xl flex items-center justify-center">
+                    <i class="fas fa-image text-4xl opacity-30"></i>
+                </div>
+                {% endif %}
+            </figure>
+
+            <div class="card-body">
+                <h2 class="card-title text-sm">
+                    {{ product.name[:60] }}{% if product.name|length > 60 %}...{% endif %}
+                </h2>
+
+                <div class="flex items-center justify-between mb-2">
+                    <div class="text-2xl font-bold text-primary">
+                        {{ "%.2f"|format(product.current_price) }} TL
+                    </div>
+                    {% if product.original_price and product.original_price != product.current_price %}
+                    <div class="text-sm line-through opacity-50">
+                        {{ "%.2f"|format(product.original_price) }} TL
+                    </div>
+                    {% endif %}
+                </div>
+
+                <div class="flex flex-wrap gap-2 mb-4">
+                    <div class="badge badge-outline">ID: {{ product.product_id }}</div>
+                    <div class="badge badge-secondary">{{ product.guild_id[:8] }}...</div>
+                </div>
+
+                <div class="card-actions justify-end">
+                    <button class="btn btn-sm btn-primary" onclick="viewProduct('{{ product.product_id }}')">
+                        <i class="fas fa-eye"></i>
+                    </button>
+                    <button class="btn btn-sm btn-secondary"
+                        onclick="editPrice('{{ product.product_id }}', '{{ product.current_price }}')">
+                        <i class="fas fa-edit"></i>
+                    </button>
+                    <button class="btn btn-sm btn-error" onclick="deleteProduct('{{ product.product_id }}')">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <!-- Pagination -->
+    {% if total_pages > 1 %}
+    <div class="flex justify-center">
+        <div class="join">
+            {% if page > 1 %}
+            <a href="?page={{ page - 1 }}{% if current_guild %}&guild_id={{ current_guild }}{% endif %}"
+                class="join-item btn">«</a>
+            {% endif %}
+
+            {% for p in range(1, total_pages + 1) %}
+            {% if p == page %}
+            <a class="join-item btn btn-active">{{ p }}</a>
+            {% else %}
+            <a href="?page={{ p }}{% if current_guild %}&guild_id={{ current_guild }}{% endif %}"
+                class="join-item btn">{{ p }}</a>
+            {% endif %}
+            {% endfor %}
+
+            {% if page < total_pages %} <a
+                href="?page={{ page + 1 }}{% if current_guild %}&guild_id={{ current_guild }}{% endif %}"
+                class="join-item btn">»</a>
+                {% endif %}
+        </div>
+    </div>
+    {% endif %}
+
+    {% else %}
+    <!-- Empty State -->
+    <div class="text-center py-16">
+        <i class="fas fa-box-open text-8xl opacity-20 mb-8"></i>
+        <h2 class="text-2xl font-bold mb-4">Henüz ürün yok</h2>
+        <p class="text-lg opacity-70 mb-8">Takip edilecek ilk ürünü ekleyin</p>
+        <a href="/add_product" class="btn btn-primary btn-lg">
+            <i class="fas fa-plus"></i>
+            İlk Ürünü Ekle
+        </a>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Edit Price Modal -->
+<dialog id="editPriceModal" class="modal">
+    <div class="modal-box">
+        <h3 class="font-bold text-lg mb-4">Fiyat Güncelle</h3>
+
+        <div class="form-control mb-4">
+            <label class="label">
+                <span class="label-text">Yeni Fiyat (TL)</span>
+            </label>
+            <input type="number" id="newPrice" step="0.01" class="input input-bordered" placeholder="0.00" />
+        </div>
+
+        <div class="modal-action">
+            <button class="btn btn-primary" onclick="updatePrice()">Güncelle</button>
+            <button class="btn" onclick="closeEditModal()">İptal</button>
+        </div>
+    </div>
+    <form method="dialog" class="modal-backdrop">
+        <button>close</button>
+    </form>
+</dialog>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    let currentProductId = null;
+
+    function filterByGuild(guildId) {
+        const url = new URL(window.location);
+        if (guildId) {
+            url.searchParams.set('guild_id', guildId);
+        } else {
+            url.searchParams.delete('guild_id');
+        }
+        url.searchParams.delete('page'); // Reset to first page
+        window.location.href = url.toString();
+    }
+
+    function viewProduct(productId) {
+        window.open(`https://www.trendyol.com/sr?q=&pi=${productId}`, '_blank');
+    }
+
+    function editPrice(productId, currentPrice) {
+        currentProductId = productId;
+        document.getElementById('newPrice').value = currentPrice;
+        document.getElementById('editPriceModal').showModal();
+    }
+
+    function closeEditModal() {
+        document.getElementById('editPriceModal').close();
+        currentProductId = null;
+    }
+
+    function updatePrice() {
+        const newPrice = document.getElementById('newPrice').value;
+
+        if (!newPrice || !currentProductId) {
+            showToast('Geçerli bir fiyat girin', 'warning');
+            return;
+        }
+
+        fetch('/api/update_price', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                product_id: currentProductId,
+                new_price: parseFloat(newPrice)
+            })
+        })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showToast('Fiyat başarıyla güncellendi', 'success');
+                    closeEditModal();
+                    // Update price in DOM
+                    const productCard = document.querySelector(`[data-product-id="${currentProductId}"]`);
+                    if (productCard) {
+                        const priceElement = productCard.querySelector('.text-primary');
+                        if (priceElement) {
+                            priceElement.textContent = `${parseFloat(newPrice).toFixed(2)} TL`;
+                        }
+                    }
+                } else {
+                    showToast('Fiyat güncellenemedi: ' + data.error, 'error');
+                }
+            })
+            .catch(error => {
+                showToast('Hata: ' + error.message, 'error');
+            });
+    }
+
+    function deleteProduct(productId) {
+        if (confirm('Bu ürünü silmek istediğinizden emin misiniz?')) {
+            fetch('/api/delete_product', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    product_id: productId
+                })
+            })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        showToast('Ürün başarıyla silindi', 'success');
+                        // Remove product from DOM
+                        const productCard = document.querySelector(`[data-product-id="${productId}"]`);
+                        if (productCard) {
+                            productCard.remove();
+                        }
+                    } else {
+                        showToast('Ürün silinemedi: ' + data.error, 'error');
+                    }
+                })
+                .catch(error => {
+                    showToast('Hata: ' + error.message, 'error');
+                });
+        }
+    }
+</script>
+{% endblock %}

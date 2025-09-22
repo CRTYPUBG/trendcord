@@ -1,0 +1,397 @@
+{% extends "base.html" %}
+
+{% block title %}Ürün Ekle - Trendyol Bot{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-8 max-w-4xl">
+    <!-- Header -->
+    <div class="mb-8">
+        <h1 class="text-4xl font-bold mb-2">
+            <i class="fas fa-plus text-primary"></i>
+            Yeni Ürün Ekle
+        </h1>
+        <p class="text-base-content/70">Trendyol ürününü takip listesine ekleyin</p>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <!-- Add Product Form -->
+        <div class="card bg-base-200 shadow-xl">
+            <div class="card-body">
+                <h2 class="card-title mb-6">
+                    <i class="fas fa-link text-secondary"></i>
+                    Ürün URL'si
+                </h2>
+                
+                <form id="addProductForm" class="space-y-6">
+                    <!-- URL Input -->
+                    <div class="form-control">
+                        <label class="label">
+                            <span class="label-text font-semibold">Trendyol URL'si</span>
+                            <span class="label-text-alt text-error">*</span>
+                        </label>
+                        <input 
+                            type="url" 
+                            id="productUrl" 
+                            placeholder="https://www.trendyol.com/... veya https://ty.gl/..." 
+                            class="input input-bordered w-full" 
+                            required
+                        />
+                        <label class="label">
+                            <span class="label-text-alt">Örnek: https://www.trendyol.com/apple/iphone-15-p-123456 veya https://ty.gl/abc123</span>
+                        </label>
+                    </div>
+
+                    <!-- Guild ID Input -->
+                    <div class="form-control">
+                        <label class="label">
+                            <span class="label-text font-semibold">Sunucu ID</span>
+                            <span class="label-text-alt">Opsiyonel</span>
+                        </label>
+                        <input 
+                            type="text" 
+                            id="guildId" 
+                            placeholder="Discord sunucu ID'si (varsayılan: web_ui)" 
+                            class="input input-bordered w-full"
+                            value="web_ui"
+                        />
+                        <label class="label">
+                            <span class="label-text-alt">Boş bırakılırsa "web_ui" kullanılır</span>
+                        </label>
+                    </div>
+
+                    <!-- Action Buttons -->
+                    <div class="flex flex-col sm:flex-row gap-4">
+                        <button 
+                            type="button" 
+                            id="testBtn" 
+                            class="btn btn-secondary flex-1"
+                            onclick="testProduct()"
+                        >
+                            <i class="fas fa-vial"></i>
+                            URL'yi Test Et
+                        </button>
+                        
+                        <button 
+                            type="submit" 
+                            id="addBtn" 
+                            class="btn btn-primary flex-1"
+                        >
+                            <i class="fas fa-plus"></i>
+                            Ürünü Ekle
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Product Preview -->
+        <div class="card bg-base-200 shadow-xl">
+            <div class="card-body">
+                <h2 class="card-title mb-6">
+                    <i class="fas fa-eye text-accent"></i>
+                    Ürün Önizleme
+                </h2>
+                
+                <div id="productPreview" class="hidden">
+                    <div class="flex flex-col items-center space-y-4">
+                        <!-- Product Image -->
+                        <div class="avatar">
+                            <div class="w-32 h-32 rounded-xl">
+                                <img id="previewImage" src="" alt="Ürün Resmi" class="object-cover" />
+                            </div>
+                        </div>
+                        
+                        <!-- Product Info -->
+                        <div class="text-center space-y-2 w-full">
+                            <h3 id="previewName" class="font-bold text-lg"></h3>
+                            
+                            <div class="flex justify-center items-center space-x-4">
+                                <div class="badge badge-primary badge-lg">
+                                    <span id="previewPrice"></span>
+                                </div>
+                                <div id="previewOriginalPrice" class="badge badge-outline badge-lg hidden">
+                                    <span class="line-through"></span>
+                                </div>
+                            </div>
+                            
+                            <div class="badge badge-info">
+                                <i class="fas fa-database mr-1"></i>
+                                <span id="previewSource"></span>
+                            </div>
+                        </div>
+                        
+                        <!-- Success Indicator -->
+                        <div class="alert alert-success">
+                            <i class="fas fa-check-circle"></i>
+                            <span>Ürün bilgileri başarıyla alındı!</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Empty State -->
+                <div id="emptyPreview" class="text-center py-12">
+                    <i class="fas fa-search text-6xl opacity-20 mb-4"></i>
+                    <p class="text-lg opacity-70 mb-2">Ürün önizlemesi</p>
+                    <p class="text-sm opacity-50">URL'yi test edin veya doğrudan ekleyin</p>
+                </div>
+                
+                <!-- Loading State -->
+                <div id="loadingPreview" class="text-center py-12 hidden">
+                    <span class="loading loading-spinner loading-lg text-primary"></span>
+                    <p class="mt-4 text-lg">Ürün bilgileri alınıyor...</p>
+                    <p class="text-sm opacity-70">Bu işlem 30 saniye kadar sürebilir</p>
+                </div>
+                
+                <!-- Error State -->
+                <div id="errorPreview" class="hidden">
+                    <div class="alert alert-error">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        <div>
+                            <h3 class="font-bold">Ürün bilgileri alınamadı!</h3>
+                            <div class="text-xs" id="errorMessage"></div>
+                        </div>
+                    </div>
+                    
+                    <div class="mt-4 space-y-2">
+                        <p class="font-semibold">Öneriler:</p>
+                        <ul class="list-disc list-inside text-sm space-y-1 opacity-80">
+                            <li>URL'nin doğru ve güncel olduğundan emin olun</li>
+                            <li>Ürünün stokta olduğunu kontrol edin</li>
+                            <li>Birkaç dakika sonra tekrar deneyin</li>
+                            <li>Manuel ekleme özelliğini kullanın</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Help Section -->
+    <div class="mt-8">
+        <div class="card bg-base-200 shadow-xl">
+            <div class="card-body">
+                <h2 class="card-title mb-4">
+                    <i class="fas fa-question-circle text-info"></i>
+                    Nasıl Kullanılır?
+                </h2>
+                
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div class="text-center">
+                        <div class="text-4xl mb-3">
+                            <i class="fas fa-copy text-primary"></i>
+                        </div>
+                        <h3 class="font-bold mb-2">1. URL'yi Kopyalayın</h3>
+                        <p class="text-sm opacity-70">Trendyol'dan (web/mobil) takip etmek istediğiniz ürünün URL'sini kopyalayın</p>
+                    </div>
+                    
+                    <div class="text-center">
+                        <div class="text-4xl mb-3">
+                            <i class="fas fa-paste text-secondary"></i>
+                        </div>
+                        <h3 class="font-bold mb-2">2. URL'yi Yapıştırın</h3>
+                        <p class="text-sm opacity-70">Kopyaladığınız URL'yi yukarıdaki forma yapıştırın</p>
+                    </div>
+                    
+                    <div class="text-center">
+                        <div class="text-4xl mb-3">
+                            <i class="fas fa-plus text-accent"></i>
+                        </div>
+                        <h3 class="font-bold mb-2">3. Ürünü Ekleyin</h3>
+                        <p class="text-sm opacity-70">Test edin ve ürünü takip listesine ekleyin</p>
+                    </div>
+                </div>
+                
+                <div class="divider"></div>
+                
+                <div class="alert alert-info">
+                    <i class="fas fa-lightbulb"></i>
+                    <div>
+                        <h3 class="font-bold">İpucu</h3>
+                        <p class="text-sm">Ürün URL'sini test ederek bilgilerin doğru çekildiğinden emin olabilirsiniz. Bu işlem ürünü eklemeden önce yapılması önerilir.</p>
+                    </div>
+                </div>
+                
+                <div class="alert alert-success">
+                    <i class="fas fa-mobile-alt"></i>
+                    <div>
+                        <h3 class="font-bold">Mobil Destek</h3>
+                        <p class="text-sm">Mobil uygulamadan paylaşılan kısaltılmış linkler (ty.gl) desteklenir. Örnek: https://ty.gl/reii1wcijhbf1</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    let currentProductData = null;
+
+    // Form submission
+    document.getElementById('addProductForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        addProduct();
+    });
+
+    // Test product function
+    function testProduct() {
+        const url = document.getElementById('productUrl').value.trim();
+        
+        if (!url) {
+            showToast('Lütfen bir URL girin', 'warning');
+            return;
+        }
+        
+        // Show loading state
+        showPreviewState('loading');
+        
+        const testBtn = document.getElementById('testBtn');
+        showLoading(testBtn);
+        
+        fetch('/api/test_product', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ url: url })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                currentProductData = data.product;
+                showProductPreview(data.product);
+                showToast('Ürün bilgileri başarıyla alındı!', 'success');
+            } else {
+                showPreviewError(data.error);
+                showToast('Ürün bilgileri alınamadı: ' + data.error, 'error');
+            }
+        })
+        .catch(error => {
+            showPreviewError('Bağlantı hatası: ' + error.message);
+            showToast('Test sırasında hata oluştu', 'error');
+        })
+        .finally(() => {
+            hideLoading(testBtn, '<i class="fas fa-vial"></i> URL\'yi Test Et');
+        });
+    }
+
+    // Add product function
+    function addProduct() {
+        const url = document.getElementById('productUrl').value.trim();
+        const guildId = document.getElementById('guildId').value.trim() || 'web_ui';
+        
+        if (!url) {
+            showToast('Lütfen bir URL girin', 'warning');
+            return;
+        }
+        
+        const addBtn = document.getElementById('addBtn');
+        showLoading(addBtn);
+        
+        fetch('/api/add_product', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                url: url,
+                guild_id: guildId,
+                user_id: 'web_admin',
+                channel_id: 'web_channel'
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showToast('Ürün başarıyla eklendi!', 'success');
+                
+                // Reset form
+                document.getElementById('addProductForm').reset();
+                document.getElementById('guildId').value = 'web_ui';
+                showPreviewState('empty');
+                currentProductData = null;
+                
+                // Redirect to products page after 2 seconds
+                setTimeout(() => {
+                    window.location.href = '/products';
+                }, 2000);
+            } else {
+                showToast('Ürün eklenemedi: ' + data.error, 'error');
+            }
+        })
+        .catch(error => {
+            showToast('Ekleme sırasında hata oluştu: ' + error.message, 'error');
+        })
+        .finally(() => {
+            hideLoading(addBtn, '<i class="fas fa-plus"></i> Ürünü Ekle');
+        });
+    }
+
+    // Preview state management
+    function showPreviewState(state) {
+        const states = ['empty', 'loading', 'preview', 'error'];
+        states.forEach(s => {
+            const element = document.getElementById(s === 'preview' ? 'productPreview' : s + 'Preview');
+            if (element) {
+                element.classList.toggle('hidden', s !== state);
+            }
+        });
+    }
+
+    // Show product preview
+    function showProductPreview(product) {
+        document.getElementById('previewName').textContent = product.name;
+        document.getElementById('previewPrice').textContent = formatPrice(product.price);
+        document.getElementById('previewSource').textContent = product.source || 'Scraping';
+        
+        // Image
+        const imageElement = document.getElementById('previewImage');
+        if (product.image_url) {
+            imageElement.src = product.image_url;
+            imageElement.onerror = function() {
+                this.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTI4IiBoZWlnaHQ9IjEyOCIgdmlld0JveD0iMCAwIDEyOCAxMjgiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIxMjgiIGhlaWdodD0iMTI4IiBmaWxsPSIjRjNGNEY2Ii8+CjxwYXRoIGQ9Ik00MCA0MEg4OFY4OEg0MFY0MFoiIGZpbGw9IiNEMUQ1REIiLz4KPC9zdmc+';
+            };
+        } else {
+            imageElement.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTI4IiBoZWlnaHQ9IjEyOCIgdmlld0JveD0iMCAwIDEyOCAxMjgiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIxMjgiIGhlaWdodD0iMTI4IiBmaWxsPSIjRjNGNEY2Ii8+CjxwYXRoIGQ9Ik00MCA0MEg4OFY4OEg0MFY0MFoiIGZpbGw9IiNEMUQ1REIiLz4KPC9zdmc+';
+        }
+        
+        // Original price
+        const originalPriceElement = document.getElementById('previewOriginalPrice');
+        if (product.original_price && product.original_price !== product.price) {
+            originalPriceElement.querySelector('span').textContent = formatPrice(product.original_price);
+            originalPriceElement.classList.remove('hidden');
+        } else {
+            originalPriceElement.classList.add('hidden');
+        }
+        
+        showPreviewState('preview');
+    }
+
+    // Show preview error
+    function showPreviewError(error) {
+        document.getElementById('errorMessage').textContent = error;
+        showPreviewState('error');
+    }
+
+    // Format price helper
+    function formatPrice(price) {
+        return new Intl.NumberFormat('tr-TR', {
+            style: 'currency',
+            currency: 'TRY'
+        }).format(price);
+    }
+
+    // Auto-test when URL is pasted
+    document.getElementById('productUrl').addEventListener('paste', function() {
+        setTimeout(() => {
+            if (this.value.trim()) {
+                testProduct();
+            }
+        }, 100);
+    });
+
+    // Initialize
+    showPreviewState('empty');
+</script>
+{% endblock %}

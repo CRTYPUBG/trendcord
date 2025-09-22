@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="tr" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Trendyol Bot Dashboard{% endblock %}</title>
+    
+    <!-- CSS Framework -->
+    <link href="https://cdn.jsdelivr.net/npm/daisyui@4.4.19/dist/full.min.css" rel="stylesheet" type="text/css" />
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Icons -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    
+    <!-- Socket.IO -->
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+    
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <style>
+        /* Custom dark theme */
+        [data-theme="dark"] {
+            --primary: #ff6b35;
+            --secondary: #4f46e5;
+            --accent: #06d6a0;
+            --neutral: #1f2937;
+            --base-100: #111827;
+            --base-200: #1f2937;
+            --base-300: #374151;
+        }
+        
+        .gradient-bg {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        
+        .card-hover {
+            transition: all 0.3s ease;
+        }
+        
+        .card-hover:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+        }
+        
+        .sidebar {
+            background: linear-gradient(180deg, #1f2937 0%, #111827 100%);
+        }
+        
+        .status-online {
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+    </style>
+</head>
+<body class="bg-base-100 text-base-content">
+    <!-- Navigation -->
+    <div class="navbar bg-base-200 shadow-lg">
+        <div class="navbar-start">
+            <div class="dropdown">
+                <div tabindex="0" role="button" class="btn btn-ghost lg:hidden">
+                    <i class="fas fa-bars text-xl"></i>
+                </div>
+                <ul tabindex="0" class="menu menu-sm dropdown-content mt-3 z-[1] p-2 shadow bg-base-100 rounded-box w-52">
+                    <li><a href="/"><i class="fas fa-home"></i> Dashboard</a></li>
+                    <li><a href="/products"><i class="fas fa-box"></i> Ürünler</a></li>
+                    <li><a href="/add_product"><i class="fas fa-plus"></i> Ürün Ekle</a></li>
+                    <li><a href="/analytics"><i class="fas fa-chart-bar"></i> Analitik</a></li>
+                    <li><a href="/notifications"><i class="fas fa-bell"></i> Bildirimler</a></li>
+                    <li><a href="/settings"><i class="fas fa-cog"></i> Ayarlar</a></li>
+                </ul>
+            </div>
+            <a class="btn btn-ghost text-xl">
+                <i class="fas fa-robot text-primary"></i>
+                Trendyol Bot
+            </a>
+        </div>
+        
+        <div class="navbar-center hidden lg:flex">
+            <ul class="menu menu-horizontal px-1">
+                <li><a href="/" class="{% if request.endpoint == 'index' %}active{% endif %}">
+                    <i class="fas fa-home"></i> Dashboard
+                </a></li>
+                <li><a href="/products" class="{% if request.endpoint == 'products' %}active{% endif %}">
+                    <i class="fas fa-box"></i> Ürünler
+                </a></li>
+                <li><a href="/add_product" class="{% if request.endpoint == 'add_product_page' %}active{% endif %}">
+                    <i class="fas fa-plus"></i> Ürün Ekle
+                </a></li>
+                <li><a href="/analytics" class="{% if request.endpoint == 'analytics' %}active{% endif %}">
+                    <i class="fas fa-chart-bar"></i> Analitik
+                </a></li>
+                <li><a href="/notifications" class="{% if request.endpoint == 'notifications' %}active{% endif %}">
+                    <i class="fas fa-bell"></i> Bildirimler
+                </a></li>
+                <li><a href="/settings" class="{% if request.endpoint == 'settings' %}active{% endif %}">
+                    <i class="fas fa-cog"></i> Ayarlar
+                </a></li>
+            </ul>
+        </div>
+        
+        <div class="navbar-end">
+            <!-- Theme Toggle -->
+            <div class="dropdown dropdown-end">
+                <div tabindex="0" role="button" class="btn btn-ghost">
+                    <i class="fas fa-palette"></i>
+                </div>
+                <ul tabindex="0" class="dropdown-content z-[1] menu p-2 shadow bg-base-100 rounded-box w-52">
+                    <li><a onclick="setTheme('dark')"><i class="fas fa-moon"></i> Dark</a></li>
+                    <li><a onclick="setTheme('light')"><i class="fas fa-sun"></i> Light</a></li>
+                    <li><a onclick="setTheme('cyberpunk')"><i class="fas fa-robot"></i> Cyberpunk</a></li>
+                </ul>
+            </div>
+            
+            <!-- Status -->
+            <div class="badge badge-success gap-2 mr-4">
+                <div class="w-2 h-2 bg-success rounded-full status-online"></div>
+                Online
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="min-h-screen bg-base-100">
+        {% block content %}{% endblock %}
+    </div>
+
+    <!-- Footer -->
+    <footer class="footer footer-center p-10 bg-base-200 text-base-content rounded">
+        <nav class="grid grid-flow-col gap-4">
+            <a href="/" class="link link-hover">Dashboard</a>
+            <a href="/products" class="link link-hover">Ürünler</a>
+            <a href="/add_product" class="link link-hover">Ürün Ekle</a>
+            <a href="/analytics" class="link link-hover">Analitik</a>
+            <a href="/notifications" class="link link-hover">Bildirimler</a>
+            <a href="/settings" class="link link-hover">Ayarlar</a>
+        </nav>
+        <nav>
+            <div class="grid grid-flow-col gap-4">
+                <a href="#" class="text-2xl hover:text-primary"><i class="fab fa-discord"></i></a>
+                <a href="#" class="text-2xl hover:text-primary"><i class="fab fa-github"></i></a>
+                <a href="#" class="text-2xl hover:text-primary"><i class="fas fa-globe"></i></a>
+            </div>
+        </nav>
+        <aside>
+            <p>© 2024 Trendyol Bot Dashboard - Tüm hakları saklıdır.</p>
+        </aside>
+    </footer>
+
+    <!-- Toast Container -->
+    <div id="toast-container" class="toast toast-top toast-end z-50"></div>
+
+    <!-- Scripts -->
+    <script>
+        // Theme Management
+        function setTheme(theme) {
+            document.documentElement.setAttribute('data-theme', theme);
+            localStorage.setItem('theme', theme);
+            showToast(`Tema ${theme} olarak değiştirildi`, 'success');
+        }
+
+        // Load saved theme
+        const savedTheme = localStorage.getItem('theme') || 'dark';
+        document.documentElement.setAttribute('data-theme', savedTheme);
+
+        // Toast Notifications
+        function showToast(message, type = 'info') {
+            const toastContainer = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            
+            const typeClasses = {
+                'success': 'alert-success',
+                'error': 'alert-error',
+                'warning': 'alert-warning',
+                'info': 'alert-info'
+            };
+            
+            toast.className = `alert ${typeClasses[type]} shadow-lg mb-2`;
+            toast.innerHTML = `
+                <div>
+                    <i class="fas fa-${type === 'success' ? 'check' : type === 'error' ? 'times' : type === 'warning' ? 'exclamation' : 'info'}-circle"></i>
+                    <span>${message}</span>
+                </div>
+            `;
+            
+            toastContainer.appendChild(toast);
+            
+            // Auto remove after 3 seconds
+            setTimeout(() => {
+                toast.remove();
+            }, 3000);
+        }
+
+        // Socket.IO Connection
+        const socket = io();
+        
+        socket.on('connect', function() {
+            console.log('WebSocket bağlantısı kuruldu');
+        });
+        
+        socket.on('product_added', function(data) {
+            showToast(`Yeni ürün eklendi: ${data.product.name}`, 'success');
+            // Refresh page if on products page
+            if (window.location.pathname === '/products') {
+                setTimeout(() => location.reload(), 1000);
+            }
+        });
+        
+        socket.on('product_deleted', function(data) {
+            showToast('Ürün silindi', 'info');
+            // Remove product from DOM if exists
+            const productElement = document.querySelector(`[data-product-id="${data.product_id}"]`);
+            if (productElement) {
+                productElement.remove();
+            }
+        });
+        
+        socket.on('price_updated', function(data) {
+            showToast('Fiyat güncellendi', 'success');
+            // Update price in DOM if exists
+            const priceElement = document.querySelector(`[data-product-id="${data.product_id}"] .price`);
+            if (priceElement) {
+                priceElement.textContent = `${data.new_price} TL`;
+            }
+        });
+        
+        socket.on('status_update', function(data) {
+            // Update status indicators
+            const statusElements = document.querySelectorAll('.bot-status');
+            statusElements.forEach(el => {
+                el.textContent = `${data.total_products} ürün takipte`;
+            });
+        });
+
+        // Utility Functions
+        function formatDate(dateString) {
+            const date = new Date(dateString);
+            return date.toLocaleDateString('tr-TR') + ' ' + date.toLocaleTimeString('tr-TR');
+        }
+
+        function formatPrice(price) {
+            return new Intl.NumberFormat('tr-TR', {
+                style: 'currency',
+                currency: 'TRY'
+            }).format(price);
+        }
+
+        // Loading States
+        function showLoading(element) {
+            element.innerHTML = '<span class="loading loading-spinner loading-sm"></span> Yükleniyor...';
+            element.disabled = true;
+        }
+
+        function hideLoading(element, originalText) {
+            element.innerHTML = originalText;
+            element.disabled = false;
+        }
+    </script>
+
+    {% block scripts %}{% endblock %}
+</body>
+</html>

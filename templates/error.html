@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+
+{% block title %}Hata - Trendyol Bot{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-16 text-center">
+    <div class="max-w-md mx-auto">
+        <div class="text-8xl mb-8">
+            <i class="fas fa-exclamation-triangle text-error"></i>
+        </div>
+        
+        <h1 class="text-4xl font-bold mb-4">Bir Hata Oluştu</h1>
+        
+        <div class="alert alert-error mb-8">
+            <i class="fas fa-times-circle"></i>
+            <div>
+                <h3 class="font-bold">Hata Detayı</h3>
+                <div class="text-xs">{{ error }}</div>
+            </div>
+        </div>
+        
+        <div class="space-y-4">
+            <a href="/" class="btn btn-primary btn-block">
+                <i class="fas fa-home"></i>
+                Ana Sayfaya Dön
+            </a>
+            
+            <button onclick="location.reload()" class="btn btn-outline btn-block">
+                <i class="fas fa-redo"></i>
+                Sayfayı Yenile
+            </button>
+        </div>
+    </div>
+</div>
+{% endblock %}

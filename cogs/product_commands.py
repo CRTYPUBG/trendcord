@@ -7,6 +7,7 @@ import asyncio
 import os
 from datetime import datetime # Tarih formatlama için
 import logging
+from admin_utils import admin_manager
 
 logger = logging.getLogger(__name__)
 
@@ -14,18 +15,21 @@ class ProductCommands(commands.Cog, name="Ürün Komutları"): # Cog'a isim verd
     def __init__(self, bot: commands.Bot):
         self.bot = bot
         self.db = bot.db # main.py'den gelen db instance'ı
-        self.scraper = bot.scraper # main.py'den gelen scraper instance'ı
+        self.scraper = bot.scraper # main.py'den gelen scraper instance'ı (geriye uyumluluk)
+        self.trendyol = bot.trendyol # main.py'den gelen API+fallback instance'ı
 
     # --- İÇ MANTIK FONKSİYONLARI ---
 
     async def _internal_add_product_logic(self, url: str, guild_id: str, user_id: str, channel_id: str):
         """Ürün ekleme işleminin temel mantığını içerir."""
-        if not self.scraper.is_valid_url(url):
+        if not self.trendyol.api_client.is_valid_url(url):
             return False, "❌ Geçersiz Trendyol URL'si. Lütfen geçerli bir Trendyol ürün linki girin."
 
-        product_data = self.scraper.scrape_product(url)
+        # API + fallback sistemi kullan
+        product_data = self.trendyol.get_product_info(url)
         if not product_data or not product_data.get('success', False):
-            return False, "❌ Ürün bilgileri alınamadı. Lütfen URL'yi kontrol edin veya daha sonra tekrar deneyin."
+            error_msg = product_data.get('error', 'Bilinmeyen hata') if product_data else 'Ürün bilgileri alınamadı'
+            return False, f"❌ Ürün bilgileri alınamadı: {error_msg}. Lütfen URL'yi kontrol edin veya daha sonra tekrar deneyin."
         
         if product_data.get('current_price') is None:
              return False, "❌ Ürün fiyat bilgisi alınamadı. Ürün stokta olmayabilir veya sayfa yapısı değişmiş olabilir."
@@ -40,24 +44,30 @@ class ProductCommands(commands.Cog, name="Ürün Komutları"): # Cog'a isim verd
                  return False, "❌ Bu ürün zaten bu sunucuda takip listenizde bulunuyor!"
             return False, "❌ Ürün eklenirken bir hata oluştu veya bu ürün zaten genel takip listenizde mevcut."
 
-    async def _internal_list_products_logic(self, guild_id: str):
-        """Belirli bir sunucudaki takip edilen ürünleri listeler."""
-        products = self.db.get_all_products(guild_id=guild_id)
+    async def _internal_list_products_logic(self, guild_id: str, user_id: str = None, is_admin: bool = False, is_global_admin: bool = False):
+        """
+        Belirli bir sunucudaki takip edilen ürünleri listeler.
+        Admin ise tüm sunucuların ürünlerini görebilir.
+        """
+        products = self.db.get_all_products(guild_id=guild_id, user_id=user_id, is_admin=is_admin or is_global_admin)
         if not products:
-            return False, "📋 Takip edilen ürün bulunmuyor."
+            if (is_admin or is_global_admin) and not guild_id:
+                return False, "📋 Hiçbir sunucuda takip edilen ürün bulunmuyor."
+            else:
+                return False, "📋 Bu sunucuda takip edilen ürün bulunmuyor."
         return True, products
 
     async def _internal_product_info_logic(self, product_identifier: str):
         """Ürün ID'si veya URL ile ürün bilgisi ve fiyat geçmişini getirir."""
-        product_id = self.scraper.extract_product_id(product_identifier)
+        product_id = self.trendyol.api_client.extract_product_id_from_url(product_identifier)
         if not product_id:
             return False, "❌ Geçerli bir ürün ID'si veya URL'si bulunamadı."
 
         product = self.db.get_product(product_id)
         if not product:
             # Veritabanında yoksa ve geçerli bir URL ise, anlık çekmeyi dene
-            if self.scraper.is_valid_url(product_identifier):
-                scraped_data = self.scraper.scrape_product(product_identifier)
+            if self.trendyol.api_client.is_valid_url(product_identifier):
+                scraped_data = self.trendyol.get_product_info(product_identifier)
                 if scraped_data and scraped_data.get('success'):
                     return True, {"scraped_data": scraped_data, "not_tracked": True}
             return False, f"❌ ID'si `{product_id}` olan ürün veritabanında bulunamadı."
@@ -65,9 +75,9 @@ class ProductCommands(commands.Cog, name="Ürün Komutları"): # Cog'a isim verd
         price_history = self.db.get_price_history(product_id)
         return True, {"product": product, "price_history": price_history}
 
-    async def _internal_delete_product_logic(self, product_identifier: str, guild_id: str, requesting_user_id: str, is_admin: bool):
+    async def _internal_delete_product_logic(self, product_identifier: str, guild_id: str, requesting_user_id: str, is_admin: bool, is_global_admin: bool = False):
         """Ürünü silme mantığı."""
-        product_id = self.scraper.extract_product_id(product_identifier)
+        product_id = self.trendyol.api_client.extract_product_id_from_url(product_identifier)
         if not product_id:
             return False, "❌ Geçerli bir ürün ID'si bulunamadı."
 
@@ -75,13 +85,20 @@ class ProductCommands(commands.Cog, name="Ürün Komutları"): # Cog'a isim verd
         if not product:
             return False, f"❌ ID'si `{product_id}` olan bir ürün takip listenizde bulunamadı."
 
-        # Silinecek ürünün bu sunucuya ait olup olmadığını kontrol et (opsiyonel ama iyi bir pratik)
+        # Silinecek ürünün bu sunucuya ait olup olmadığını kontrol et
         if str(product.get('guild_id')) != guild_id:
             return False, f"❌ ID'si `{product_id}` olan ürün bu sunucuda takip edilmiyor."
 
         product_owner_id = product.get('user_id')
-        if str(requesting_user_id) != product_owner_id and not is_admin:
-            return False, "❌ Bu ürünü silmek için yetkiniz yok. Sadece ürünü ekleyen kişi veya sunucu yöneticileri silebilir."
+        # Global admin, guild admin veya ürün sahibi silebilir
+        can_delete = (
+            str(requesting_user_id) == product_owner_id or 
+            is_admin or 
+            is_global_admin
+        )
+        
+        if not can_delete:
+            return False, "❌ Bu ürünü silmek için yetkiniz yok. Sadece ürünü ekleyen kişi, sunucu yöneticileri veya global adminler silebilir."
 
         if self.db.delete_product(product_id, guild_id=guild_id): # Sadece bu guild için sil
             return True, product.get('name', 'İsimsiz Ürün')
@@ -90,7 +107,7 @@ class ProductCommands(commands.Cog, name="Ürün Komutları"): # Cog'a isim verd
 
     async def _internal_update_product_logic(self, product_identifier: str):
         """Ürün bilgilerini manuel güncelleme mantığı."""
-        product_id = self.scraper.extract_product_id(product_identifier)
+        product_id = self.trendyol.api_client.extract_product_id_from_url(product_identifier)
         if not product_id:
             return False, "❌ Geçerli bir ürün ID'si bulunamadı."
 
@@ -102,9 +119,10 @@ class ProductCommands(commands.Cog, name="Ürün Komutları"): # Cog'a isim verd
         if not product_url:
             return False, f"❌ Ürünün (`{product_id}`) kayıtlı bir URL'si bulunamadı."
 
-        new_data = self.scraper.scrape_product(product_url)
+        new_data = self.trendyol.get_product_info(product_url)
         if not new_data or not new_data.get('success', False):
-            return False, f"❌ Ürün (`{product_id}`) bilgileri Trendyol'dan alınamadı."
+            error_msg = new_data.get('error', 'Bilinmeyen hata') if new_data else 'Veri alınamadı'
+            return False, f"❌ Ürün (`{product_id}`) bilgileri alınamadı: {error_msg}"
         
         if new_data.get('current_price') is None:
             return False, f"❌ Yeni fiyat bilgisi alınamadı (`{product_id}`)."
@@ -134,7 +152,9 @@ class ProductCommands(commands.Cog, name="Ürün Komutları"): # Cog'a isim verd
         embed.add_field(name="Ürün URL", value=f"[Trendyol'da Görüntüle]({product_data['url']})", inline=False)
         if product_data.get('image_url'):
             embed.set_thumbnail(url=product_data['image_url'])
-        embed.set_footer(text=f"Ekleyen: {user_name} • Fiyat değiştiğinde bildirim gönderilecek.")
+        source_info = product_data.get('source', 'scraping')
+        source_text = "API" if source_info in ['supplier_api', 'search_api', 'public_api'] else "Scraping"
+        embed.set_footer(text=f"Ekleyen: {user_name} • Kaynak: {source_text} • Fiyat değiştiğinde bildirim gönderilecek.")
         return embed
 
     def _create_product_info_embed(self, data, user_name_fetcher, command_type=""):
@@ -265,27 +285,59 @@ class ProductCommands(commands.Cog, name="Ürün Komutları"): # Cog'a isim verd
     @commands.guild_only()
     async def takiptekiler_prefix(self, ctx: commands.Context):
         async with ctx.typing():
-            success, result = await self._internal_list_products_logic(str(ctx.guild.id))
+            is_guild_admin = ctx.author.guild_permissions.administrator
+            is_global_admin = admin_manager.is_global_admin(ctx.author.id)
+            is_admin = is_guild_admin or is_global_admin
+            success, result = await self._internal_list_products_logic(str(ctx.guild.id), is_admin=is_admin, is_global_admin=is_global_admin)
 
         if not success: # Hata veya boş liste
             await ctx.send(result)
             return
 
         products = result
+        
+        # Admin için özel başlık
+        admin_level = admin_manager.get_admin_level(ctx.author, ctx.guild)
+        if admin_level == "global":
+            title = "📋 Takip Edilen Ürünler (🌐 Global Admin)"
+            description = f"Bu sunucuda toplam **{len(products)}** ürün takip ediliyor."
+            color = discord.Color.red()
+        elif admin_level == "guild":
+            title = "📋 Takip Edilen Ürünler (👑 Sunucu Admin)"
+            description = f"Bu sunucuda toplam **{len(products)}** ürün takip ediliyor."
+            color = discord.Color.gold()
+        else:
+            title = "📋 Takip Edilen Ürünler"
+            description = f"Bu sunucuda toplam **{len(products)}** ürün takip ediliyor."
+            color = discord.Color.blue()
+        
         embed = discord.Embed(
-            title="📋 Takip Edilen Ürünler (Prefix)",
-            description=f"Bu sunucuda toplam **{len(products)}** ürün takip ediliyor.",
-            color=discord.Color.blue()
+            title=title,
+            description=description,
+            color=color
         )
+        
         # Sayfalama eklenebilir, şimdilik ilk 10
         for i, product_db in enumerate(products[:10]):
             user_name = "Bilinmiyor"
             if product_db.get('user_id'):
                 try: user = await self.bot.fetch_user(int(product_db['user_id'])); user_name = user.name
                 except: pass
+            
+            # Admin için sunucu bilgisi de göster
+            guild_info = ""
+            if is_admin and product_db.get('guild_id'):
+                try:
+                    guild = self.bot.get_guild(int(product_db['guild_id']))
+                    if guild:
+                        guild_info = f"🏠 Sunucu: {guild.name}\n"
+                except:
+                    guild_info = f"🏠 Sunucu ID: {product_db['guild_id']}\n"
+            
             value = f"🆔 **ID:** `{product_db['product_id']}`\n" \
                     f"💰 **Fiyat:** {product_db.get('current_price', 0):.2f} TL\n" \
                     f"🔗 [Trendyol]({product_db['url']})\n" \
+                    f"{guild_info}" \
                     f"👤 Ekleyen: {user_name}"
             embed.add_field(
                 name=f"📦 {product_db.get('name', 'İsimsiz Ürün')[:50]}{'...' if len(product_db.get('name', '')) > 50 else ''}",
@@ -332,8 +384,10 @@ class ProductCommands(commands.Cog, name="Ürün Komutları"): # Cog'a isim verd
             return
 
         async with ctx.typing():
+            is_guild_admin = ctx.author.guild_permissions.administrator
+            is_global_admin = admin_manager.is_global_admin(ctx.author.id)
             success, result = await self._internal_delete_product_logic(
-                product_identifier, str(ctx.guild.id), str(ctx.author.id), ctx.author.guild_permissions.administrator
+                product_identifier, str(ctx.guild.id), str(ctx.author.id), is_guild_admin, is_global_admin
             )
         
         if success:
@@ -378,26 +432,53 @@ class ProductCommands(commands.Cog, name="Ürün Komutları"): # Cog'a isim verd
     @app_commands.guild_only()
     async def takiptekiler_slash(self, interaction: discord.Interaction):
         await interaction.response.defer(thinking=True)
-        success, result = await self._internal_list_products_logic(str(interaction.guild.id))
+        is_guild_admin = interaction.user.guild_permissions.administrator
+        is_global_admin = admin_manager.is_global_admin(interaction.user.id)
+        is_admin = is_guild_admin or is_global_admin
+        success, result = await self._internal_list_products_logic(str(interaction.guild.id), is_admin=is_admin, is_global_admin=is_global_admin)
 
         if not success:
             await interaction.followup.send(result)
             return
         
         products = result
+        
+        # Admin için özel başlık
+        if is_admin:
+            title = "📋 Takip Edilen Ürünler (Admin Görünümü)"
+            description = f"Bu sunucuda toplam **{len(products)}** ürün takip ediliyor."
+            color = discord.Color.gold()
+        else:
+            title = "📋 Takip Edilen Ürünler"
+            description = f"Bu sunucuda toplam **{len(products)}** ürün takip ediliyor."
+            color = discord.Color.purple()
+        
         embed = discord.Embed(
-            title="📋 Takip Edilen Ürünler (Slash)",
-            description=f"Bu sunucuda toplam **{len(products)}** ürün takip ediliyor.",
-            color=discord.Color.purple() # Farklı renk
+            title=title,
+            description=description,
+            color=color
         )
+        
         for i, product_db in enumerate(products[:10]): # Sayfalama için butonlar eklenebilir
             user_name = "Bilinmiyor"
             if product_db.get('user_id'):
                 try: user = await self.bot.fetch_user(int(product_db['user_id'])); user_name = user.name
                 except: pass
+            
+            # Admin için sunucu bilgisi de göster
+            guild_info = ""
+            if is_admin and product_db.get('guild_id'):
+                try:
+                    guild = self.bot.get_guild(int(product_db['guild_id']))
+                    if guild:
+                        guild_info = f"🏠 Sunucu: {guild.name}\n"
+                except:
+                    guild_info = f"🏠 Sunucu ID: {product_db['guild_id']}\n"
+            
             value = f"🆔 **ID:** `{product_db['product_id']}`\n" \
                     f"💰 **Fiyat:** {product_db.get('current_price', 0):.2f} TL\n" \
                     f"🔗 [Trendyol]({product_db['url']})\n" \
+                    f"{guild_info}" \
                     f"👤 Ekleyen: {user_name}"
             embed.add_field(
                 name=f"📦 {product_db.get('name', 'İsimsiz Ürün')[:50]}{'...' if len(product_db.get('name', '')) > 50 else ''}",
@@ -436,8 +517,10 @@ class ProductCommands(commands.Cog, name="Ürün Komutları"): # Cog'a isim verd
     @app_commands.guild_only()
     async def sil_slash(self, interaction: discord.Interaction, urun_kimligi: str):
         await interaction.response.defer(thinking=True)
+        is_guild_admin = interaction.user.guild_permissions.administrator
+        is_global_admin = admin_manager.is_global_admin(interaction.user.id)
         success, result = await self._internal_delete_product_logic(
-            urun_kimligi, str(interaction.guild.id), str(interaction.user.id), interaction.user.guild_permissions.administrator
+            urun_kimligi, str(interaction.guild.id), str(interaction.user.id), is_guild_admin, is_global_admin
         )
         if success:
             product_name = result
@@ -458,24 +541,249 @@ class ProductCommands(commands.Cog, name="Ürün Komutları"): # Cog'a isim verd
 
     @app_commands.command(name="yardim", description="Bot komutları hakkında yardım bilgisi verir.")
     async def yardim_slash(self, interaction: discord.Interaction):
+        is_admin = interaction.user.guild_permissions.administrator if interaction.guild else False
+        
         embed = discord.Embed(
             title="📚 Trendyol Takip Botu - Yardım (Slash Komutları)",
             description=f"Aşağıda kullanabileceğiniz slash komutlarının (`/`) listesi bulunmaktadır.\n"
                         f"Ayrıca prefix komutları (`{self.bot.command_prefix}`) da mevcuttur. Onlar için `{self.bot.command_prefix}yardım` kullanın.",
-            color=discord.Color.purple()
+            color=discord.Color.gold() if is_admin else discord.Color.purple()
         )
-        # Slash komutlarını dinamik olarak listelemek için bot.tree.get_commands() kullanılabilir
-        # Ancak bu basit bir statik liste olacak:
+        
+        # Temel komutlar
         embed.add_field(name="`/ekle [url]`", value="Takip edilecek Trendyol ürününü ekler.", inline=False)
         embed.add_field(name="`/takiptekiler`", value="Bu sunucuda takip edilen ürünleri listeler.", inline=False)
         embed.add_field(name="`/bilgi [urun_kimligi]`", value="Belirtilen ürün hakkında detaylı bilgi verir.", inline=False)
         embed.add_field(name="`/sil [urun_kimligi]`", value="Takip edilen bir ürünü listeden çıkarır.", inline=False)
         embed.add_field(name="`/guncelle [urun_kimligi]`", value="Ürün bilgilerini manuel olarak günceller.", inline=False)
+        embed.add_field(name="`/manuel_ekle`", value="Ürünü manuel olarak ekler.", inline=False)
         embed.add_field(name="`/yardim`", value="Bu yardım mesajını gösterir.", inline=False)
+        
+        # Admin için özel bilgi
+        if is_admin:
+            embed.add_field(
+                name="👑 **Admin Özellikleri**", 
+                value="• Tüm ürünleri görebilirsiniz\n• Herkesin ürününü silebilirsiniz\n• Sunucu istatistiklerini görebilirsiniz", 
+                inline=False
+            )
         
         embed.set_footer(text=f"Trendyol Takip Botu • Fiyat kontrol aralığı: {int(os.getenv('CHECK_INTERVAL', 3600))//60} dakika")
         await interaction.response.send_message(embed=embed, ephemeral=True)
 
+
+    # --- ADMIN KOMUTLARI ---
+    
+    @commands.command(name="admin_stats", help="Sunucu istatistiklerini gösterir (Sadece adminler)")
+    @commands.guild_only()
+    async def admin_stats_prefix(self, ctx: commands.Context):
+        """Admin için sunucu istatistikleri"""
+        # Admin kontrolü
+        is_guild_admin = ctx.author.guild_permissions.administrator
+        is_global_admin = admin_manager.is_global_admin(ctx.author.id)
+        
+        if not (is_guild_admin or is_global_admin):
+            await ctx.send("❌ Bu komutu kullanmak için admin yetkisine sahip olmanız gerekir.")
+            return
+        
+        async with ctx.typing():
+            try:
+                # Bu sunucunun istatistikleri
+                guild_count = self.db.get_guild_product_count(str(ctx.guild.id))
+                
+                # Tüm sunucuların istatistikleri
+                all_stats = self.db.get_all_guilds_stats()
+                
+                embed = discord.Embed(
+                    title="📊 Admin İstatistikleri",
+                    description=f"**{ctx.guild.name}** sunucusu için detaylı istatistikler",
+                    color=discord.Color.gold()
+                )
+                
+                embed.add_field(
+                    name="🏠 Bu Sunucu",
+                    value=f"Toplam ürün: **{guild_count}**",
+                    inline=True
+                )
+                
+                # Genel istatistikler
+                total_products = sum(stat['product_count'] for stat in all_stats)
+                total_guilds = len(all_stats)
+                
+                embed.add_field(
+                    name="🌐 Genel İstatistikler",
+                    value=f"Toplam sunucu: **{total_guilds}**\nToplam ürün: **{total_products}**",
+                    inline=True
+                )
+                
+                # En aktif sunucular (ilk 5)
+                if all_stats:
+                    top_guilds = ""
+                    for i, stat in enumerate(all_stats[:5]):
+                        try:
+                            guild = self.bot.get_guild(int(stat['guild_id']))
+                            guild_name = guild.name if guild else f"Sunucu {stat['guild_id']}"
+                        except:
+                            guild_name = f"Sunucu {stat['guild_id']}"
+                        
+                        top_guilds += f"{i+1}. {guild_name}: {stat['product_count']} ürün\n"
+                    
+                    embed.add_field(
+                        name="🏆 En Aktif Sunucular",
+                        value=top_guilds or "Veri yok",
+                        inline=False
+                    )
+                
+                embed.set_footer(text="Bu bilgiler sadece adminler tarafından görülebilir.")
+                await ctx.send(embed=embed)
+                
+            except Exception as e:
+                await ctx.send(f"❌ İstatistikler alınırken hata oluştu: {str(e)}")
+    
+    @app_commands.command(name="admin_stats", description="Sunucu istatistiklerini gösterir (Sadece adminler)")
+    @app_commands.guild_only()
+    @app_commands.default_permissions(administrator=True)
+    async def admin_stats_slash(self, interaction: discord.Interaction):
+        """Admin için sunucu istatistikleri (slash)"""
+        await interaction.response.defer(thinking=True)
+        
+        try:
+            # Bu sunucunun istatistikleri
+            guild_count = self.db.get_guild_product_count(str(interaction.guild.id))
+            
+            # Tüm sunucuların istatistikleri
+            all_stats = self.db.get_all_guilds_stats()
+            
+            embed = discord.Embed(
+                title="📊 Admin İstatistikleri",
+                description=f"**{interaction.guild.name}** sunucusu için detaylı istatistikler",
+                color=discord.Color.gold()
+            )
+            
+            embed.add_field(
+                name="🏠 Bu Sunucu",
+                value=f"Toplam ürün: **{guild_count}**",
+                inline=True
+            )
+            
+            # Genel istatistikler
+            total_products = sum(stat['product_count'] for stat in all_stats)
+            total_guilds = len(all_stats)
+            
+            embed.add_field(
+                name="🌐 Genel İstatistikler",
+                value=f"Toplam sunucu: **{total_guilds}**\nToplam ürün: **{total_products}**",
+                inline=True
+            )
+            
+            # En aktif sunucular (ilk 5)
+            if all_stats:
+                top_guilds = ""
+                for i, stat in enumerate(all_stats[:5]):
+                    try:
+                        guild = self.bot.get_guild(int(stat['guild_id']))
+                        guild_name = guild.name if guild else f"Sunucu {stat['guild_id']}"
+                    except:
+                        guild_name = f"Sunucu {stat['guild_id']}"
+                    
+                    top_guilds += f"{i+1}. {guild_name}: {stat['product_count']} ürün\n"
+                
+                embed.add_field(
+                    name="🏆 En Aktif Sunucular",
+                    value=top_guilds or "Veri yok",
+                    inline=False
+                )
+            
+            embed.set_footer(text="Bu bilgiler sadece adminler tarafından görülebilir.")
+            await interaction.followup.send(embed=embed)
+            
+        except Exception as e:
+            await interaction.followup.send(f"❌ İstatistikler alınırken hata oluştu: {str(e)}")
+    
+    # --- GLOBAL ADMIN KOMUTLARI ---
+    
+    @commands.command(name="global_admin_list", help="Global admin listesini gösterir (Sadece global adminler)")
+    async def global_admin_list_prefix(self, ctx: commands.Context):
+        """Global admin listesi"""
+        if not admin_manager.is_global_admin(ctx.author.id):
+            await ctx.send("❌ Bu komutu sadece global adminler kullanabilir.")
+            return
+        
+        global_admins = admin_manager.get_global_admin_list()
+        
+        embed = discord.Embed(
+            title="🌐 Global Admin Listesi",
+            description=f"Toplam **{len(global_admins)}** global admin",
+            color=discord.Color.red()
+        )
+        
+        admin_info = ""
+        for admin_id in global_admins:
+            try:
+                user = await self.bot.fetch_user(admin_id)
+                admin_info += f"• {user.name} (`{admin_id}`)\n"
+            except:
+                admin_info += f"• Bilinmeyen Kullanıcı (`{admin_id}`)\n"
+        
+        embed.add_field(
+            name="👑 Global Adminler",
+            value=admin_info or "Hiç global admin yok",
+            inline=False
+        )
+        
+        embed.set_footer(text="Bu bilgiler sadece global adminler tarafından görülebilir.")
+        await ctx.send(embed=embed)
+    
+    @commands.command(name="global_stats", help="Tüm sunucuların istatistiklerini gösterir (Sadece global adminler)")
+    async def global_stats_prefix(self, ctx: commands.Context):
+        """Global istatistikler"""
+        if not admin_manager.is_global_admin(ctx.author.id):
+            await ctx.send("❌ Bu komutu sadece global adminler kullanabilir.")
+            return
+        
+        async with ctx.typing():
+            try:
+                # Tüm sunucuların istatistikleri
+                all_stats = self.db.get_all_guilds_stats()
+                
+                embed = discord.Embed(
+                    title="🌐 Global İstatistikler",
+                    description="Tüm sunucuların detaylı istatistikleri",
+                    color=discord.Color.red()
+                )
+                
+                # Genel istatistikler
+                total_products = sum(stat['product_count'] for stat in all_stats)
+                total_guilds = len(all_stats)
+                
+                embed.add_field(
+                    name="📊 Genel Bilgiler",
+                    value=f"Toplam sunucu: **{total_guilds}**\nToplam ürün: **{total_products}**\nOrtalama ürün/sunucu: **{total_products/total_guilds if total_guilds > 0 else 0:.1f}**",
+                    inline=True
+                )
+                
+                # En aktif sunucular
+                if all_stats:
+                    top_guilds = ""
+                    for i, stat in enumerate(all_stats[:10]):
+                        try:
+                            guild = self.bot.get_guild(int(stat['guild_id']))
+                            guild_name = guild.name if guild else f"Sunucu {stat['guild_id']}"
+                        except:
+                            guild_name = f"Sunucu {stat['guild_id']}"
+                        
+                        top_guilds += f"{i+1}. {guild_name}: **{stat['product_count']}** ürün\n"
+                    
+                    embed.add_field(
+                        name="🏆 En Aktif Sunucular",
+                        value=top_guilds or "Veri yok",
+                        inline=False
+                    )
+                
+                embed.set_footer(text="Bu bilgiler sadece global adminler tarafından görülebilir.")
+                await ctx.send(embed=embed)
+                
+            except Exception as e:
+                await ctx.send(f"❌ Global istatistikler alınırken hata oluştu: {str(e)}")
 
 async def setup(bot: commands.Bot):
     await bot.add_cog(ProductCommands(bot))

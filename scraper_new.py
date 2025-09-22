@@ -61,10 +61,6 @@ class TrendyolScraper:
     def _get_full_url(self, url):
         """Follow redirects to get the full URL if it's a shortened link."""
         try:
-            # Kısaltılmış link kontrolü
-            if 'ty.gl' in url or 'tyml.gl' in url:
-                logger.info(f"Kısaltılmış link tespit edildi: {url}")
-                
             self._add_random_delay()
             headers = {
                 'User-Agent': USER_AGENT,
@@ -75,19 +71,8 @@ class TrendyolScraper:
                 'Upgrade-Insecure-Requests': '1'
             }
             session = self._create_session()
-            
-            # Kısaltılmış linkler için özel işlem
-            if 'ty.gl' in url or 'tyml.gl' in url:
-                # HEAD request ile redirect'i takip et
-                response = session.head(url, headers=headers, allow_redirects=True, timeout=TIMEOUT)
-                final_url = response.url
-                logger.info(f"Kısaltılmış link çözüldü: {url} -> {final_url}")
-                return final_url
-            else:
-                # Normal URL için
-                response = session.head(url, headers=headers, allow_redirects=True, timeout=TIMEOUT)
-                return response.url
-                
+            response = session.head(url, headers=headers, allow_redirects=True, timeout=TIMEOUT)
+            return response.url
         except Exception as e:
             logger.error(f"Error following redirect for {url}: {e}")
             return url
@@ -99,41 +84,16 @@ class TrendyolScraper:
         try:
             if url.isdigit():
                 return url
-            
-            # Kısaltılmış link ise önce tam URL'yi al
-            if 'ty.gl' in url or 'tyml.gl' in url:
-                logger.info(f"Kısaltılmış linkten ürün ID çıkarılıyor: {url}")
-                full_url = self._get_full_url(url)
-                if full_url != url:
-                    logger.info(f"Tam URL alındı: {full_url}")
-                    url = full_url
-            
             parsed_url = urlparse(url)
-            
-            # Standard Trendyol URL pattern'i: /product-name-p-123456
             path_match = re.search(r'/[^/]+-p-(\d+)', parsed_url.path)
             if path_match:
-                product_id = path_match.group(1)
-                logger.info(f"Ürün ID bulundu: {product_id}")
-                return product_id
-            
-            # Query parametrelerinde ara
+                return path_match.group(1)
             query_params = parse_qs(parsed_url.query)
             if 'productId' in query_params:
                 return query_params['productId'][0]
-            if 'pi' in query_params:  # Trendyol'un kısa parametresi
-                return query_params['pi'][0]
-            
-            # URL içinde p- pattern'i ara
             numbers = re.findall(r'p-(\d+)', url)
             if numbers:
                 return numbers[0]
-            
-            # Son çare: URL'deki tüm sayıları ara (8+ haneli)
-            all_numbers = re.findall(r'\d{8,}', url)
-            if all_numbers:
-                return all_numbers[0]
-                
             return None
         except Exception as e:
             logger.error(f"Error extracting product ID: {e}")
@@ -143,7 +103,6 @@ class TrendyolScraper:
         """Checks if the URL is a valid Trendyol URL or a product ID."""
         if url.isdigit():
             return True
-        # Mobil kısaltılmış linkler ve normal linkler
         return bool(re.match(r'https?://(www\.)?(trendyol\.com|ty\.gl|tyml\.gl|trendyol-milla\.com).*', url))
 
     # --- Main Scraping Logic ---

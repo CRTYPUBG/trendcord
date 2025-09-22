@@ -11,6 +11,7 @@ import traceback
 
 from database import Database
 from scraper import TrendyolScraper
+from trendyol_api import TrendyolAPI, TrendyolAPIFallback
 
 dotenv.load_dotenv()
 
@@ -23,15 +24,31 @@ CHECK_INTERVAL = int(os.getenv('CHECK_INTERVAL', 3600))
 PROXY_ENABLED = os.getenv('PROXY_ENABLED', 'True').lower() == 'true'
 VERIFY_SSL = os.getenv('VERIFY_SSL', 'True').lower() == 'true'
 DATABASE_PATH = os.getenv('DATABASE_PATH', 'data/trendyol_tracker.sqlite')
+TIMEOUT = int(os.getenv('TIMEOUT', 15))
+MAX_RETRIES = int(os.getenv('MAX_RETRIES', 5))
 
 intents = discord.Intents.default()
 intents.message_content = True
 
 bot = commands.Bot(command_prefix=PREFIX, intents=intents, case_insensitive=True, help_command=None)
 
-# Database ve Scraper instance'larını bot objesine ata
+# Database ve API/Scraper instance'larını bot objesine ata
 bot.db = Database(db_name=DATABASE_PATH)
-bot.scraper = TrendyolScraper(use_proxy=PROXY_ENABLED, verify_ssl=VERIFY_SSL)
+
+# Trendyol API client'ı oluştur
+api_client = TrendyolAPI()
+
+# Scraper'ı oluştur (yeni gelişmiş scraper)
+scraper = TrendyolScraper(
+    use_proxy=PROXY_ENABLED, 
+    verify_ssl=VERIFY_SSL
+)
+
+# Fallback sistemi (önce API, sonra scraping)
+bot.trendyol = TrendyolAPIFallback(api_client=api_client, scraper=scraper)
+
+# Geriye uyumluluk için
+bot.scraper = scraper
 
 @bot.event
 async def on_ready():
@@ -72,6 +89,24 @@ async def load_cogs():
             except Exception as e:
                 logger.error(f"Cog yüklenirken hata: {cog_name}\nHata: {e}")
                 traceback.print_exc()
+    
+    # Analitik komutlarını manuel olarak ekle
+    try:
+        from cogs.analytics_commands import AnalyticsCommands
+        await bot.add_cog(AnalyticsCommands(bot, bot.db))
+        logger.info("Analitik komutları yüklendi")
+    except Exception as e:
+        logger.error(f"Analitik komutları yüklenirken hata: {e}")
+        traceback.print_exc()
+    
+    # Bildirim komutlarını manuel olarak ekle
+    try:
+        from cogs.notification_commands import NotificationCommands
+        await bot.add_cog(NotificationCommands(bot, bot.db))
+        logger.info("Bildirim komutları yüklendi")
+    except Exception as e:
+        logger.error(f"Bildirim komutları yüklenirken hata: {e}")
+        traceback.print_exc()
 
 @tasks.loop(seconds=CHECK_INTERVAL)
 async def check_prices():
@@ -85,13 +120,18 @@ async def check_prices():
 
     logger.info(f"Toplam {len(products)} ürün kontrol edilecek.")
 
+    # Bildirim sistemi
+    from notification_system import NotificationSystem
+    notification_system = NotificationSystem(bot.db)
+
     for product in products:
         try:
-            # bot.scraper üzerinden erişim
-            product_data = bot.scraper.scrape_product(product['url'])
+            # bot.trendyol üzerinden erişim (API + fallback)
+            product_data = bot.trendyol.get_product_info(product['url'])
 
             if not product_data or not product_data.get('success', False):
-                logger.warning(f"Ürün bilgileri alınamadı: {product.get('product_id','Bilinmeyen ID')} - {product.get('name','Bilinmeyen Ürün')}")
+                error_msg = product_data.get('error', 'Bilinmeyen hata') if product_data else 'Veri alınamadı'
+                logger.warning(f"Ürün bilgileri alınamadı: {product.get('product_id','Bilinmeyen ID')} - {error_msg}")
                 continue
 
             old_price = product['current_price']
@@ -103,6 +143,54 @@ async def check_prices():
 
             bot.db.update_product_price(product['product_id'], new_price)
 
+            # Fiyat hedeflerini kontrol et
+            triggered_targets = notification_system.check_price_targets(product['product_id'], new_price)
+            
+            # Fiyat hedefi bildirimleri gönder
+            for target in triggered_targets:
+                try:
+                    channel = bot.get_channel(int(target['channel_id']))
+                    if channel:
+                        embed = discord.Embed(
+                            title="🎯 Fiyat Hedefi Gerçekleşti!",
+                            description=f"**{target['product_name'][:50]}...**",
+                            url=target['product_url'],
+                            color=discord.Color.gold()
+                        )
+                        
+                        condition_text = {
+                            'below': f"₺{target['target_price']:.2f} altına düştü",
+                            'above': f"₺{target['target_price']:.2f} üstüne çıktı"
+                        }
+                        
+                        embed.add_field(
+                            name="Hedef",
+                            value=condition_text.get(target['condition'], f"₺{target['target_price']:.2f}"),
+                            inline=True
+                        )
+                        
+                        embed.add_field(
+                            name="Mevcut Fiyat",
+                            value=f"₺{target['current_price']:.2f}",
+                            inline=True
+                        )
+                        
+                        embed.add_field(
+                            name="Durum",
+                            value="✅ Gerçekleşti",
+                            inline=True
+                        )
+                        
+                        if target.get('product_image'):
+                            embed.set_thumbnail(url=target['product_image'])
+                        
+                        user_mention = f"<@{target['user_id']}>"
+                        await channel.send(content=f"{user_mention} fiyat hedefiniz gerçekleşti!", embed=embed)
+                        logger.info(f"Fiyat hedefi bildirimi gönderildi: {target['product_name']}")
+                except Exception as e:
+                    logger.error(f"Fiyat hedefi bildirimi gönderilirken hata: {e}")
+
+            # Normal fiyat değişimi bildirimi
             if old_price != new_price:
                 try:
                     channel_id_str = product.get('channel_id')

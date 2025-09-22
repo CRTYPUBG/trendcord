@@ -1,205 +1,325 @@
 import requests
 from bs4 import BeautifulSoup
 import re
-import random
-import os
-import time
+from config import USER_AGENT
 import logging
+import json
+import time
+import random
+from requests.adapters import HTTPAdapter
+from urllib3.util.retry import Retry
+from urllib.parse import urlparse, parse_qs
 
-# Logging ayarları
+# Configure logging
 logging.basicConfig(
-    level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.FileHandler("scraper.log"),
-        logging.StreamHandler()
-    ]
+    level=logging.INFO
 )
-logger = logging.getLogger("trendyol_scraper")
+logger = logging.getLogger(__name__)
 
-# Kötü proxy'leri takip etmek için
-bad_proxies = {}
-BAD_PROXY_TIMEOUT = 30 * 60  # 30 dakika
+# Request configuration from user's new code
+MAX_RETRIES = 3
+BACKOFF_FACTOR = 2
+TIMEOUT = 15
+MIN_DELAY = 1
+MAX_DELAY = 3
 
-def get_product_info(url, proxies=None):
-    """
-    Trendyol ürün URL'sinden ürün bilgilerini çeker.
-    
-    Args:
-        url (str): Trendyol ürün URL'si
-        proxies (dict, optional): Kullanılacak proxy. Default: None
-    
-    Returns:
-        dict: Ürün bilgileri veya None (hata durumunda)
-    """
-    headers = {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
-        'Accept-Language': 'tr-TR,tr;q=0.9,en-US;q=0.8,en;q=0.7',
-        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8',
-        'Connection': 'keep-alive'
-    }
-    
-    try:
-        logger.info(f"Ürün bilgisi çekiliyor: {url} {'(proxy ile)' if proxies else '(proxy olmadan)'}")
+class TrendyolScraper:
+    def __init__(self, use_proxy=False, verify_ssl=True):
+        """
+        Initializes the scraper.
+        Proxy functionality has been removed in favor of a more robust session management.
+        """
+        self.verify_ssl = verify_ssl
+
+    # --- Core Request and Session Logic (from new code) ---
+
+    def _create_session(self):
+        """Create a robust HTTP session with retry strategy."""
+        session = requests.Session()
+        session.verify = self.verify_ssl
         
-        # Proxy kullanarak veya kullanmadan istek yap
-        response = requests.get(url, headers=headers, proxies=proxies, timeout=10)
-        response.raise_for_status()
-        
-        # Proxy başarılı olduysa kötü proxy listesinden çıkar
-        if proxies and proxies.get('http') in bad_proxies:
-            logger.info(f"Proxy başarılı: {proxies.get('http')}")
-            del bad_proxies[proxies.get('http')]
-        
-        soup = BeautifulSoup(response.content, 'html.parser')
-        
-        # Trendyol'un güncel HTML yapısına göre seçicileri güncelle
-        # Not: Bu seçiciler değişebilir, Trendyol'un güncel yapısını kontrol et
-        name_tag = soup.select_one('h1.pr-new-br')
-        price_tag = soup.select_one('span.prc-dsc')
-        
-        # Alternatif seçiciler (farklı sayfalar için)
-        if not name_tag:
-            name_tag = soup.select_one('h1.product-name')
-        
-        if not price_tag:
-            price_tag = soup.select_one('span.product-price')
-            
-        # Resim için
-        image_tag = soup.select_one('img.product-image')
-        if not image_tag:
-            image_tag = soup.select_one('div.gallery-container img')
-            
-        name = name_tag.text.strip() if name_tag else None
-        
-        # Fiyat bilgisini temizle ve sayıya çevir
-        price = None
-        if price_tag:
-            price_text = price_tag.text.strip()
-            # Fiyat metninden TL ve diğer karakterleri kaldır
-            price_text = price_text.replace('TL', '').replace('.', '').replace(',', '.').strip()
-            try:
-                price = float(price_text)
-            except ValueError:
-                logger.warning(f"Fiyat parse edilemedi: {price_text}")
-        
-        image_url = None
-        if image_tag and 'src' in image_tag.attrs:
-            image_url = image_tag['src']
-        
-        # Trendyol ID'yi URL'den çıkar
-        match_id = re.search(r'-p-(\d+)', url)
-        trendyol_id = match_id.group(1) if match_id else None
-        
-        # Gerekli bilgilerin hepsi alındı mı kontrol et
-        if not trendyol_id or not name or price is None:
-            missing = []
-            if not trendyol_id: missing.append("trendyol_id")
-            if not name: missing.append("name")
-            if price is None: missing.append("price")
-            
-            logger.error(f"Eksik ürün bilgileri: {', '.join(missing)} - URL: {url}")
+        retry_strategy = Retry(
+            total=MAX_RETRIES,
+            status_forcelist=[429, 500, 502, 503, 504],
+            backoff_factor=BACKOFF_FACTOR,
+            allowed_methods=["HEAD", "GET", "OPTIONS"]
+        )
+
+        adapter = HTTPAdapter(max_retries=retry_strategy)
+        session.mount("http://", adapter)
+        session.mount("https://", adapter)
+
+        return session
+
+    def _add_random_delay(self):
+        """Add random delay between requests to avoid rate limiting."""
+        delay = random.uniform(MIN_DELAY, MAX_DELAY)
+        time.sleep(delay)
+        logger.debug(f"Added {delay:.2f}s delay")
+
+    def _get_full_url(self, url):
+        """Follow redirects to get the full URL if it's a shortened link."""
+        try:
+            self._add_random_delay()
+            headers = {
+                'User-Agent': USER_AGENT,
+                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+                'Accept-Language': 'tr-TR,tr;q=0.8,en-US;q=0.5,en;q=0.3',
+                'Accept-Encoding': 'gzip, deflate',
+                'Connection': 'keep-alive',
+                'Upgrade-Insecure-Requests': '1'
+            }
+            session = self._create_session()
+            response = session.head(url, headers=headers, allow_redirects=True, timeout=TIMEOUT)
+            return response.url
+        except Exception as e:
+            logger.error(f"Error following redirect for {url}: {e}")
+            return url
+
+    # --- Compatibility Methods (from old scraper) ---
+
+    def extract_product_id(self, url):
+        """Extracts the product ID from a Trendyol URL."""
+        try:
+            if url.isdigit():
+                return url
+            parsed_url = urlparse(url)
+            path_match = re.search(r'/[^/]+-p-(\d+)', parsed_url.path)
+            if path_match:
+                return path_match.group(1)
+            query_params = parse_qs(parsed_url.query)
+            if 'productId' in query_params:
+                return query_params['productId'][0]
+            numbers = re.findall(r'p-(\d+)', url)
+            if numbers:
+                return numbers[0]
             return None
+        except Exception as e:
+            logger.error(f"Error extracting product ID: {e}")
+            return None
+
+    def is_valid_url(self, url):
+        """Checks if the URL is a valid Trendyol URL or a product ID."""
+        if url.isdigit():
+            return True
+        return bool(re.match(r'https?://(www\.)?(trendyol\.com|ty\.gl|tyml\.gl|trendyol-milla\.com).*', url))
+
+    # --- Main Scraping Logic ---
+
+    def scrape_product(self, url):
+        """
+        Public method to scrape product info and return it in the expected dictionary format.
+        This method orchestrates the scraping process and formats the output.
+        """
+        product_id = self.extract_product_id(url)
+        if not product_id:
+            logger.error(f"Could not extract product ID from URL: {url}")
+            return {'success': False, 'error': 'Invalid URL or Product ID', 'current_price': None}
+
+        product_url = f"https://www.trendyol.com/any-p-{product_id}" if url.isdigit() else url
+
+        scraped_data = self._scrape_page(product_url)
+
+        if not scraped_data or scraped_data.get("error"):
+            return {'success': False, 'error': scraped_data.get("error", "Unknown error"), 'current_price': None}
         
-        logger.info(f"Ürün bilgileri başarıyla çekildi: {name}, {price} TL")
-        
-        return {
-            'trendyol_id': trendyol_id,
-            'name': name,
-            'price': price,
-            'image_url': image_url,
-            'url': url
+        # Combine scraped data with necessary IDs and URLs
+        final_data = {
+            'product_id': product_id,
+            'name': scraped_data.get('product_name'),
+            'url': product_url,
+            'image_url': scraped_data.get('image_url'),
+            'current_price': scraped_data.get('price'),
+            'original_price': scraped_data.get('original_price', scraped_data.get('price')), # Fallback
+            'success': True
         }
+        return final_data
+
+    def _scrape_page(self, url):
+        """
+        Performs the actual page scraping, integrating all logic from the new code.
+        Returns a dictionary with scraped information.
+        """
+        last_error = None
+        for attempt in range(MAX_RETRIES):
+            try:
+                logger.info(f"Scraping attempt {attempt + 1}/{MAX_RETRIES} for {url}")
+                full_url = self._get_full_url(url)
+
+                if not self.is_valid_url(full_url):
+                    return {"error": "URL does not belong to Trendyol"}
+
+                if attempt > 0:
+                    delay = BACKOFF_FACTOR ** attempt + random.uniform(1, 3)
+                    time.sleep(delay)
+                else:
+                    self._add_random_delay()
+
+                headers = {'User-Agent': USER_AGENT, 'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8', 'Accept-Language': 'tr-TR,tr;q=0.8,en-US;q=0.5,en;q=0.3', 'Accept-Encoding': 'gzip, deflate', 'Connection': 'keep-alive', 'Upgrade-Insecure-Requests': '1', 'Cache-Control': 'no-cache', 'Pragma': 'no-cache'}
+                session = self._create_session()
+                response = session.get(full_url, headers=headers, timeout=TIMEOUT)
+
+                if response.status_code != 200:
+                    last_error = f"HTTP {response.status_code}"
+                    continue
+
+                soup = BeautifulSoup(response.text, 'lxml')
+                
+                # --- All extraction logic is now called from here ---
+                product_name = self._extract_product_name(soup)
+                
+                if self._is_sold_out(soup):
+                    logger.info(f"Product is sold out: {product_name}")
+                    return {"product_name": product_name, "price": 0, "original_price": 0, "error": "Tükendi"}
+
+                price, original_price = self._extract_prices(soup)
+                image_url = self._extract_image_url(soup)
+
+                if not product_name:
+                    return {"error": "Could not extract product name"}
+                if price is None:
+                    return {"product_name": product_name, "error": "Could not extract price"}
+
+                logger.info(f"Successfully scraped - Product: {product_name}, Price: {price} TL")
+                return {
+                    "product_name": product_name,
+                    "price": price,
+                    "original_price": original_price,
+                    "image_url": image_url,
+                    "error": None
+                }
+
+            except Exception as e:
+                last_error = f"Unexpected error: {str(e)}"
+                logger.warning(f"Unexpected error for {url}, attempt {attempt + 1}: {e}")
         
-    except requests.exceptions.RequestException as e:
-        logger.error(f"HTTP istek hatası: {e} (URL: {url})")
-        
-        # Proxy hatalıysa kaydedelim
-        if proxies and proxies.get('http'):
-            proxy_address = proxies.get('http')
-            bad_proxies[proxy_address] = time.time()
-            logger.warning(f"Kötü proxy listesine eklendi: {proxy_address}")
-            
-        return None
-    except Exception as e:
-        logger.error(f"Beklenmeyen hata: {e} (URL: {url})", exc_info=True)
+        return {"error": f"Failed after {MAX_RETRIES} attempts. Last error: {last_error}"}
+
+    # --- Granular Extraction Methods (from new code, made into class methods) ---
+
+    def _extract_price_from_text(self, text):
+        """Helper to extract numeric price value from text."""
+        if not text: return None
+        price_text = text.strip().replace('.', '').replace(',', '.')
+        match = re.search(r'(\d+[,.]\d+|\d+)', price_text)
+        if match:
+            price = float(match.group(1).replace(',', '.'))
+            if 0.01 <= price <= 100000: return price
         return None
 
-def load_proxies(file_path="proxies.txt"):
-    """
-    Proxy dosyasından proxy listesini yükler.
-    
-    Args:
-        file_path (str): Proxy dosyasının yolu
-    
-    Returns:
-        list: Proxy listesi
-    """
-    proxies = []
-    
-    if not os.path.exists(file_path):
-        logger.warning(f"Proxy dosyası bulunamadı: {file_path}")
-        return proxies
-    
-    try:
-        with open(file_path, 'r') as f:
-            for line in f:
-                line = line.strip()
-                if line and not line.startswith('#') and ':' in line:
-                    proxies.append(line)
-        
-        logger.info(f"{len(proxies)} proxy yüklendi: {file_path}")
-        return proxies
-    except Exception as e:
-        logger.error(f"Proxy dosyası okuma hatası: {e}")
-        return []
-
-def clean_bad_proxies():
-    """
-    Belirli bir süre geçmiş kötü proxy'leri temizler.
-    """
-    current_time = time.time()
-    to_remove = []
-    
-    for proxy, timestamp in bad_proxies.items():
-        if current_time - timestamp > BAD_PROXY_TIMEOUT:
-            to_remove.append(proxy)
-    
-    for proxy in to_remove:
-        del bad_proxies[proxy]
-        logger.info(f"Süre dolduğu için kötü proxy listesinden çıkarıldı: {proxy}")
-
-def get_random_proxy(proxy_list):
-    """
-    Proxy listesinden rastgele ve geçerli bir proxy seçer.
-    
-    Args:
-        proxy_list (list): Proxy listesi
-    
-    Returns:
-        dict: Request için uygun formatta proxy, veya None
-    """
-    if not proxy_list:
+    def _extract_product_name(self, soup):
+        """Extract product name using various methods."""
+        h1_tag = soup.find('h1', attrs={'data-testid': 'product-name'})
+        if h1_tag: return h1_tag.text.strip()
+        if soup.find('h1'): return soup.find('h1').text.strip()
+        if soup.find('title'): return soup.find('title').text.split('-')[0].strip()
         return None
-    
-    # Kötü proxy listesini temizle
-    clean_bad_proxies()
-    
-    # Kötü proxy listesinde olmayan proxy'leri filtrele
-    good_proxies = [p for p in proxy_list if f"http://{p}" not in bad_proxies]
-    
-    if not good_proxies:
-        logger.warning("Kullanılabilir iyi proxy kalmadı!")
-        # Alternatif olarak tüm listeyi kullanabiliriz, ancak bu durumda performans düşer
-        if proxy_list:
-            logger.info("Tüm proxy'ler kötü durumda, yine de biri seçiliyor...")
-            proxy = random.choice(proxy_list)
-        else:
+
+    def _is_sold_out(self, soup):
+        """Check if the product is sold out using various methods."""
+        # Method 1: Add to cart button
+        add_to_cart_btn = soup.find('button', attrs={'data-testid': 'add-to-cart-button'})
+        if add_to_cart_btn:
+            btn_text = add_to_cart_btn.get_text().strip()
+            if 'Sepete Ekle' in btn_text: return False
+            if 'Tükendi' in btn_text or 'Stok Yok' in btn_text or 'Mevcut Değil' in btn_text: return True
+
+        # Method 2: Buy now button
+        buy_now_btn = soup.find('button', class_='buy-now-button')
+        if buy_now_btn and 'Şimdi Al' in buy_now_btn.get_text().strip(): return False
+
+        # Method 3: Disabled button
+        disabled_buttons = soup.find_all('button', disabled=True)
+        for btn in disabled_buttons:
+            if any('add-to-cart' in c or 'sepete-ekle' in c for c in btn.get('class', [])): return True
+
+        # Method 4: General out of stock messages
+        visible_elements = soup.find_all(['div', 'span', 'p'], class_=lambda x: x and 'stock' in ' '.join(x).lower())
+        for element in visible_elements:
+            text = element.get_text().strip().lower()
+            if any(phrase in text for phrase in ['tükendi', 'stok yok', 'mevcut değil', 'satışta değil']):
+                if len(text) < 100 and not any(js_indicator in text for js_indicator in ['window', 'function', 'var ']): return True
+        return False
+
+    def _extract_prices(self, soup):
+        """Extract both current and original prices using all available methods."""
+        price, original_price = None, None
+
+        # Method 1: New - data-testid price search
+        price_container = soup.find('div', attrs={'data-testid': 'price'})
+        if price_container:
+            discounted_span = price_container.find('span', class_='price-view-discounted')
+            original_span = price_container.find('span', class_='price-view-original')
+            if discounted_span: price = self._extract_price_from_text(discounted_span.text)
+            if original_span: original_price = self._extract_price_from_text(original_span.text)
+            if not price and original_span: price = original_price # No discount, original is current
+            if not price: # Fallback to any span in the container
+                for span in price_container.find_all('span'):
+                    extracted = self._extract_price_from_text(span.get_text())
+                    if extracted: price = extracted; break
+
+        # Method 2 & 3: price-price or prc-dsc
+        if not price:
+            price_tag = soup.find('div', class_=lambda x: x and 'price-price' in ' '.join(x)) or soup.find('span', class_='prc-dsc')
+            if price_tag: price = self._extract_price_from_text(price_tag.text)
+
+        # Method 4: Old structure - campaign-price
+        if not price:
+            price_tag = soup.find('p', class_='campaign-price')
+            if price_tag: price = self._extract_price_from_text(price_tag.text)
+
+        # Method 5: JSON-LD
+        if not price:
+            for script in soup.find_all('script', type='application/ld+json'):
+                try:
+                    data = json.loads(script.string)
+                    offers = data.get('offers')
+                    if isinstance(offers, dict): price = float(offers.get('price'))
+                    elif isinstance(offers, list) and offers: price = float(offers[0].get('price'))
+                    if price: logger.info(f"Found price via JSON-LD: {price}"); break
+                except (json.JSONDecodeError, AttributeError, TypeError): continue
+
+        # Method 6: JavaScript variables
+        if not price:
+            for script in soup.find_all('script'):
+                if not script.string: continue
+                if 'winnerVariant' in script.string or 'productDetail' in script.string:
+                    for pattern in [r'"price":\s*{\s*[^}]*"value":\s*([0-9.]+)', r'"price":\s*([0-9.]+)', r'"currentPrice":\s*([0-9.]+)', r'"sellingPrice":\s*([0-9.]+)' ]:
+                        match = re.search(pattern, script.string)
+                        if match: price = float(match.group(1)); logger.info(f"Found price via JavaScript: {price}"); break
+                if price: break
+
+        # Method 7: General TL/₺ search
+        if not price:
+            for element in soup.find_all(string=re.compile(r'\d+[,.]?\d*\s*(TL|₺)')):
+                if element.parent.name == 'script': continue
+                extracted = self._extract_price_from_text(element)
+                if extracted: price = extracted; logger.info(f"Found price via general TL search: {price}"); break
+
+        if not original_price: original_price = price
+        return price, original_price
+
+    def _extract_image_url(self, soup):
+        """Extract product image URL using multiple methods."""
+        try:
+            # Method 1: Try to get from 'og:image' meta tag (most reliable)
+            og_image = soup.find('meta', property='og:image')
+            if og_image and og_image.get('content'):
+                return og_image['content']
+
+            # Method 2: New gallery image selector
+            gallery_img = soup.select_one('.product-image-gallery-container img')
+            if gallery_img and gallery_img.get('src'):
+                image_url = gallery_img.get('src')
+                return image_url if image_url.startswith('http') else 'https:' + image_url
+
+            # Method 3: Fallback to old selector
+            img_tag = soup.select_one('img.ph-gl-img, .product-slide img')
+            if img_tag and img_tag.get('src'):
+                image_url = img_tag.get('src')
+                return image_url if image_url.startswith('http') else 'https:' + image_url
+        except Exception as e:
+            logger.error(f"Error extracting image URL: {e}")
             return None
-    else:
-        proxy = random.choice(good_proxies)
-    
-    return {
-        'http': f'http://{proxy}',
-        'https': f'https://{proxy}'
-    } 
+        return None

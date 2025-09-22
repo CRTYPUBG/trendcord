@@ -1,0 +1,366 @@
+{% extends "base.html" %}
+
+{% block title %}Ayarlar - Trendyol Bot{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-8 max-w-4xl">
+    <!-- Header -->
+    <div class="mb-8">
+        <h1 class="text-4xl font-bold mb-2">
+            <i class="fas fa-cog text-primary"></i>
+            Ayarlar
+        </h1>
+        <p class="text-base-content/70">Bot yapılandırması ve sistem ayarları</p>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <!-- Bot Settings -->
+        <div class="card bg-base-200 shadow-xl">
+            <div class="card-body">
+                <h2 class="card-title mb-6">
+                    <i class="fas fa-robot text-secondary"></i>
+                    Bot Ayarları
+                </h2>
+                
+                <div class="space-y-4">
+                    <div class="form-control">
+                        <label class="label">
+                            <span class="label-text font-semibold">Kontrol Aralığı (saniye)</span>
+                        </label>
+                        <input type="number" value="{{ settings.check_interval }}" class="input input-bordered" readonly />
+                        <label class="label">
+                            <span class="label-text-alt">Fiyat kontrolü yapma sıklığı</span>
+                        </label>
+                    </div>
+
+                    <div class="form-control">
+                        <label class="label">
+                            <span class="label-text font-semibold">Timeout (saniye)</span>
+                        </label>
+                        <input type="number" value="{{ settings.timeout }}" class="input input-bordered" readonly />
+                        <label class="label">
+                            <span class="label-text-alt">İstek zaman aşımı süresi</span>
+                        </label>
+                    </div>
+
+                    <div class="form-control">
+                        <label class="label">
+                            <span class="label-text font-semibold">Maksimum Deneme</span>
+                        </label>
+                        <input type="number" value="{{ settings.max_retries }}" class="input input-bordered" readonly />
+                        <label class="label">
+                            <span class="label-text-alt">Başarısız istek için yeniden deneme sayısı</span>
+                        </label>
+                    </div>
+
+                    <div class="form-control">
+                        <label class="cursor-pointer label">
+                            <span class="label-text font-semibold">Proxy Kullanımı</span>
+                            <input type="checkbox" {% if settings.proxy_enabled == 'True' %}checked{% endif %} class="toggle toggle-primary" disabled />
+                        </label>
+                    </div>
+
+                    <div class="form-control">
+                        <label class="cursor-pointer label">
+                            <span class="label-text font-semibold">SSL Doğrulama</span>
+                            <input type="checkbox" {% if settings.verify_ssl == 'True' %}checked{% endif %} class="toggle toggle-secondary" disabled />
+                        </label>
+                    </div>
+                </div>
+
+                <div class="alert alert-info mt-6">
+                    <i class="fas fa-info-circle"></i>
+                    <div>
+                        <h3 class="font-bold">Bilgi</h3>
+                        <p class="text-sm">Bu ayarlar .env dosyasından okunur ve sadece görüntüleme amaçlıdır.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Admin Settings -->
+        <div class="card bg-base-200 shadow-xl">
+            <div class="card-body">
+                <h2 class="card-title mb-6">
+                    <i class="fas fa-crown text-warning"></i>
+                    Admin Ayarları
+                </h2>
+                
+                <div class="space-y-4">
+                    <div class="form-control">
+                        <label class="label">
+                            <span class="label-text font-semibold">Global Admin ID'leri</span>
+                        </label>
+                        <textarea class="textarea textarea-bordered h-24" readonly>{{ settings.global_admin_ids }}</textarea>
+                        <label class="label">
+                            <span class="label-text-alt">Virgülle ayrılmış Discord kullanıcı ID'leri</span>
+                        </label>
+                    </div>
+
+                    <div class="stats shadow">
+                        <div class="stat">
+                            <div class="stat-figure text-primary">
+                                <i class="fas fa-users text-2xl"></i>
+                            </div>
+                            <div class="stat-title">Global Admin</div>
+                            <div class="stat-value text-primary">{{ settings.global_admin_ids.split(',')|length if settings.global_admin_ids else 0 }}</div>
+                            <div class="stat-desc">Aktif admin sayısı</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- System Info -->
+        <div class="card bg-base-200 shadow-xl">
+            <div class="card-body">
+                <h2 class="card-title mb-6">
+                    <i class="fas fa-server text-accent"></i>
+                    Sistem Bilgileri
+                </h2>
+                
+                <div class="space-y-4">
+                    <div class="flex justify-between items-center">
+                        <span class="font-semibold">Web UI Durumu</span>
+                        <div class="badge badge-success">Çalışıyor</div>
+                    </div>
+
+                    <div class="flex justify-between items-center">
+                        <span class="font-semibold">Database</span>
+                        <div class="badge badge-success">Bağlı</div>
+                    </div>
+
+                    <div class="flex justify-between items-center">
+                        <span class="font-semibold">Scraper</span>
+                        <div class="badge badge-success">Hazır</div>
+                    </div>
+
+                    <div class="flex justify-between items-center">
+                        <span class="font-semibold">WebSocket</span>
+                        <div class="badge badge-success" id="ws-status">Bağlı</div>
+                    </div>
+
+                    <div class="divider"></div>
+
+                    <div class="flex justify-between items-center">
+                        <span class="font-semibold">Platform</span>
+                        <span class="text-sm">Windows</span>
+                    </div>
+
+                    <div class="flex justify-between items-center">
+                        <span class="font-semibold">Python</span>
+                        <span class="text-sm" id="python-version">3.11+</span>
+                    </div>
+
+                    <div class="flex justify-between items-center">
+                        <span class="font-semibold">Flask</span>
+                        <span class="text-sm">5.3.0+</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Actions -->
+        <div class="card bg-base-200 shadow-xl">
+            <div class="card-body">
+                <h2 class="card-title mb-6">
+                    <i class="fas fa-tools text-error"></i>
+                    Sistem İşlemleri
+                </h2>
+                
+                <div class="space-y-4">
+                    <button class="btn btn-primary btn-block" onclick="testConnection()">
+                        <i class="fas fa-wifi"></i>
+                        Bağlantı Testi
+                    </button>
+
+                    <button class="btn btn-secondary btn-block" onclick="refreshStats()">
+                        <i class="fas fa-sync-alt"></i>
+                        İstatistikleri Yenile
+                    </button>
+
+                    <button class="btn btn-accent btn-block" onclick="testScraper()">
+                        <i class="fas fa-spider"></i>
+                        Scraper Testi
+                    </button>
+
+                    <div class="divider">Tehlikeli İşlemler</div>
+
+                    <button class="btn btn-warning btn-block" onclick="clearCache()">
+                        <i class="fas fa-broom"></i>
+                        Cache Temizle
+                    </button>
+
+                    <button class="btn btn-error btn-block" onclick="restartSystem()">
+                        <i class="fas fa-power-off"></i>
+                        Sistemi Yeniden Başlat
+                    </button>
+                </div>
+
+                <div class="alert alert-warning mt-6">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    <div>
+                        <h3 class="font-bold">Uyarı</h3>
+                        <p class="text-sm">Sistem işlemleri dikkatli kullanılmalıdır.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Environment Variables -->
+    <div class="mt-8">
+        <div class="card bg-base-200 shadow-xl">
+            <div class="card-body">
+                <h2 class="card-title mb-6">
+                    <i class="fas fa-file-code text-info"></i>
+                    Ortam Değişkenleri (.env)
+                </h2>
+                
+                <div class="overflow-x-auto">
+                    <table class="table table-zebra">
+                        <thead>
+                            <tr>
+                                <th>Değişken</th>
+                                <th>Değer</th>
+                                <th>Açıklama</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td class="font-mono">CHECK_INTERVAL</td>
+                                <td>{{ settings.check_interval }}</td>
+                                <td>Fiyat kontrol aralığı (saniye)</td>
+                            </tr>
+                            <tr>
+                                <td class="font-mono">PROXY_ENABLED</td>
+                                <td>{{ settings.proxy_enabled }}</td>
+                                <td>Proxy kullanımı</td>
+                            </tr>
+                            <tr>
+                                <td class="font-mono">VERIFY_SSL</td>
+                                <td>{{ settings.verify_ssl }}</td>
+                                <td>SSL sertifika doğrulama</td>
+                            </tr>
+                            <tr>
+                                <td class="font-mono">TIMEOUT</td>
+                                <td>{{ settings.timeout }}</td>
+                                <td>İstek zaman aşımı</td>
+                            </tr>
+                            <tr>
+                                <td class="font-mono">MAX_RETRIES</td>
+                                <td>{{ settings.max_retries }}</td>
+                                <td>Maksimum yeniden deneme</td>
+                            </tr>
+                            <tr>
+                                <td class="font-mono">GLOBAL_ADMIN_IDS</td>
+                                <td>{{ settings.global_admin_ids[:20] }}{% if settings.global_admin_ids|length > 20 %}...{% endif %}</td>
+                                <td>Global admin kullanıcı ID'leri</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    function testConnection() {
+        const btn = event.target;
+        showLoading(btn);
+        
+        fetch('/api/stats')
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showToast('Bağlantı başarılı! Sistem çalışıyor.', 'success');
+            } else {
+                showToast('Bağlantı hatası', 'error');
+            }
+        })
+        .catch(error => {
+            showToast('Bağlantı başarısız: ' + error.message, 'error');
+        })
+        .finally(() => {
+            hideLoading(btn, '<i class="fas fa-wifi"></i> Bağlantı Testi');
+        });
+    }
+
+    function refreshStats() {
+        const btn = event.target;
+        showLoading(btn);
+        
+        fetch('/api/stats')
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showToast('İstatistikler yenilendi', 'success');
+            } else {
+                showToast('İstatistikler yenilenemedi', 'error');
+            }
+        })
+        .catch(error => {
+            showToast('Hata: ' + error.message, 'error');
+        })
+        .finally(() => {
+            hideLoading(btn, '<i class="fas fa-sync-alt"></i> İstatistikleri Yenile');
+        });
+    }
+
+    function testScraper() {
+        const btn = event.target;
+        showLoading(btn);
+        
+        // Test URL ile scraper'ı test et
+        fetch('/api/test_product', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                url: 'https://www.trendyol.com/test-p-123456'
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showToast('Scraper çalışıyor!', 'success');
+            } else {
+                showToast('Scraper testi: ' + data.error, 'warning');
+            }
+        })
+        .catch(error => {
+            showToast('Scraper test hatası: ' + error.message, 'error');
+        })
+        .finally(() => {
+            hideLoading(btn, '<i class="fas fa-spider"></i> Scraper Testi');
+        });
+    }
+
+    function clearCache() {
+        if (confirm('Cache temizlensin mi? Bu işlem performansı geçici olarak etkileyebilir.')) {
+            showToast('Cache temizlendi (simüle)', 'info');
+        }
+    }
+
+    function restartSystem() {
+        if (confirm('Sistemi yeniden başlatmak istediğinizden emin misiniz? Bu işlem birkaç dakika sürebilir.')) {
+            showToast('Sistem yeniden başlatılıyor... (simüle)', 'warning');
+        }
+    }
+
+    // WebSocket status monitoring
+    socket.on('connect', function() {
+        document.getElementById('ws-status').textContent = 'Bağlı';
+        document.getElementById('ws-status').className = 'badge badge-success';
+    });
+
+    socket.on('disconnect', function() {
+        document.getElementById('ws-status').textContent = 'Bağlantı Kesildi';
+        document.getElementById('ws-status').className = 'badge badge-error';
+    });
+</script>
+{% endblock %}
