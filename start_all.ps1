@@ -57,48 +57,82 @@ if ($webRunning -or $tunnelRunning -or $botRunning) {
     }
 }
 
-# Web UI başlat
+# Ana Web UI başlat
 if (-not $BotOnly) {
-    Write-Info "Web UI başlatılıyor..."
+    Write-Info "Ana Web UI başlatılıyor (Port 5000)..."
     try {
         Start-Process -FilePath "powershell" -ArgumentList "-Command", "cd '$currentDir'; .\venv\Scripts\Activate.ps1; python start_web_ui.py --port 5000 --host 127.0.0.1" -WindowStyle Minimized
         Start-Sleep -Seconds 3
         
-        # Web UI'nin başladığını kontrol et
+        # Ana Web UI'nin başladığını kontrol et
         $webCheck = Get-Process -Name "python" -ErrorAction SilentlyContinue | Where-Object { $_.CommandLine -like "*start_web_ui.py*" }
         if ($webCheck) {
-            Write-Success "Web UI başlatıldı (PID: $($webCheck.Id))"
+            Write-Success "Ana Web UI başlatıldı (PID: $($webCheck.Id))"
         } else {
-            Write-Warning "Web UI başlatılamadı"
+            Write-Warning "Ana Web UI başlatılamadı"
         }
     }
     catch {
-        Write-Error "Web UI başlatılırken hata: $($_.Exception.Message)"
+        Write-Error "Ana Web UI başlatılırken hata: $($_.Exception.Message)"
+    }
+    
+    # Kullanıcı Paneli başlat
+    Write-Info "Kullanıcı Paneli başlatılıyor (Port 3000)..."
+    try {
+        Start-Process -FilePath "powershell" -ArgumentList "-Command", "cd '$currentDir'; .\venv\Scripts\Activate.ps1; python start_user_panel.py" -WindowStyle Minimized
+        Start-Sleep -Seconds 3
+        
+        # Kullanıcı Paneli'nin başladığını kontrol et
+        $userPanelCheck = Get-Process -Name "python" -ErrorAction SilentlyContinue | Where-Object { $_.CommandLine -like "*start_user_panel.py*" }
+        if ($userPanelCheck) {
+            Write-Success "Kullanıcı Paneli başlatıldı (PID: $($userPanelCheck.Id))"
+        } else {
+            Write-Warning "Kullanıcı Paneli başlatılamadı"
+        }
+    }
+    catch {
+        Write-Error "Kullanıcı Paneli başlatılırken hata: $($_.Exception.Message)"
     }
 }
 
-# Cloudflare Tunnel başlat
+# Cloudflare Tunnels başlat (Her panel için ayrı)
 if (-not $NoTunnel -and -not $BotOnly -and -not $WebOnly) {
+    $cloudflaredPath = ""
     if (Test-Path "cloudflared.exe") {
-        Write-Info "Cloudflare Tunnel başlatılıyor..."
+        $cloudflaredPath = ".\cloudflared.exe"
+    } elseif (Get-Command "cloudflared" -ErrorAction SilentlyContinue) {
+        $cloudflaredPath = "cloudflared"
+    }
+    
+    if ($cloudflaredPath) {
         try {
-            Start-Process -FilePath ".\cloudflared.exe" -ArgumentList "tunnel", "--url", "http://localhost:5000" -WindowStyle Minimized
+            # Ana panel tunnel (Port 5000)
+            Write-Info "Ana Panel Cloudflare Tunnel başlatılıyor..."
+            Start-Process -FilePath $cloudflaredPath -ArgumentList "tunnel", "--url", "http://localhost:5000" -WindowStyle Minimized
             Start-Sleep -Seconds 5
+            Write-Success "Ana Panel Tunnel başlatıldı"
             
-            # Tunnel'ın başladığını kontrol et
+            # Kullanıcı paneli tunnel (Port 3000)
+            Write-Info "Kullanıcı Paneli Cloudflare Tunnel başlatılıyor..."
+            Start-Process -FilePath $cloudflaredPath -ArgumentList "tunnel", "--url", "http://localhost:3000" -WindowStyle Minimized
+            Start-Sleep -Seconds 5
+            Write-Success "Kullanıcı Paneli Tunnel başlatıldı"
+            
+            # Tunnel kontrolü
             $tunnelCheck = Get-Process -Name "cloudflared" -ErrorAction SilentlyContinue
             if ($tunnelCheck) {
-                Write-Success "Cloudflare Tunnel başlatıldı (PID: $($tunnelCheck.Id))"
-                Write-Info "Tunnel URL'sini görmek için cloudflared loglarını kontrol edin"
+                $tunnelCount = ($tunnelCheck | Measure-Object).Count
+                Write-Success "$tunnelCount Cloudflare Tunnel başlatıldı"
+                Write-Info "Tunnel URL'lerini görmek için cloudflared pencerelerini kontrol edin"
             } else {
-                Write-Warning "Cloudflare Tunnel başlatılamadı"
+                Write-Warning "Cloudflare Tunnels başlatılamadı"
             }
         }
         catch {
-            Write-Error "Cloudflare Tunnel başlatılırken hata: $($_.Exception.Message)"
+            Write-Error "Cloudflare Tunnels başlatılırken hata: $($_.Exception.Message)"
         }
     } else {
-        Write-Warning "cloudflared.exe bulunamadı! Tunnel başlatılamadı."
+        Write-Warning "cloudflared bulunamadı! Tunnels başlatılamadı."
     }
 }
 
@@ -137,13 +171,20 @@ Write-Host "=======================" -ForegroundColor Cyan
 Start-Sleep -Seconds 2
 
 $webFinal = Get-Process -Name "python" -ErrorAction SilentlyContinue | Where-Object { $_.CommandLine -like "*start_web_ui.py*" }
+$userPanelFinal = Get-Process -Name "python" -ErrorAction SilentlyContinue | Where-Object { $_.CommandLine -like "*start_user_panel.py*" }
 $tunnelFinal = Get-Process -Name "cloudflared" -ErrorAction SilentlyContinue
 $botFinal = Get-Process -Name "python" -ErrorAction SilentlyContinue | Where-Object { $_.CommandLine -like "*main.py*" }
 
 if ($webFinal) {
-    Write-Success "Web UI: Çalışıyor (PID: $($webFinal.Id))"
+    Write-Success "Ana Web UI: Çalışıyor (PID: $($webFinal.Id))"
 } else {
-    Write-Warning "Web UI: Durduruldu"
+    Write-Warning "Ana Web UI: Durduruldu"
+}
+
+if ($userPanelFinal) {
+    Write-Success "Kullanıcı Paneli: Çalışıyor (PID: $($userPanelFinal.Id))"
+} else {
+    Write-Warning "Kullanıcı Paneli: Durduruldu"
 }
 
 if ($tunnelFinal) {
@@ -162,18 +203,30 @@ if ($botFinal) {
 Write-Host ""
 Write-Host "🌐 Erişim Bilgileri:" -ForegroundColor Green
 Write-Host "===================" -ForegroundColor Green
-Write-Host "Yerel Web UI: http://localhost:5000" -ForegroundColor Cyan
+Write-Host "Ana Panel (Yerel): http://localhost:5000" -ForegroundColor Cyan
+Write-Host "Kullanıcı Paneli (Yerel): http://localhost:3000" -ForegroundColor Cyan
 
 if ($tunnelFinal) {
-    Write-Host "Cloudflare Tunnel: Aktif (URL için tunnel loglarını kontrol edin)" -ForegroundColor Yellow
+    $tunnelCount = ($tunnelFinal | Measure-Object).Count
+    Write-Host "Cloudflare Tunnels: $tunnelCount Aktif" -ForegroundColor Yellow
+    Write-Host "Ana Panel Tunnel: İlk cloudflared penceresini kontrol edin" -ForegroundColor Yellow
+    Write-Host "Kullanıcı Panel Tunnel: İkinci cloudflared penceresini kontrol edin" -ForegroundColor Yellow
 }
 
 # Port kontrolü
-$portCheck = netstat -an | Select-String ":5000.*LISTENING"
-if ($portCheck) {
-    Write-Success "Port 5000: Dinleniyor"
+$port5000Check = netstat -an | Select-String ":5000.*LISTENING"
+$port3000Check = netstat -an | Select-String ":3000.*LISTENING"
+
+if ($port5000Check) {
+    Write-Success "Port 5000 (Ana Panel): Dinleniyor"
 } else {
     Write-Warning "Port 5000: Dinlenmiyor"
+}
+
+if ($port3000Check) {
+    Write-Success "Port 3000 (Kullanıcı Paneli): Dinleniyor"
+} else {
+    Write-Warning "Port 3000: Dinlenmiyor"
 }
 
 Write-Host ""

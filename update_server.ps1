@@ -153,12 +153,21 @@ if (-not $NoRestart) {
         Start-Sleep -Seconds 2
     }
     
-    # Web UI service
-    Write-Info "Stopping Web UI..."
+    # Web UI service (Ana Panel)
+    Write-Info "Stopping Main Web UI..."
     $webProcesses = Get-Process -Name "python" -ErrorAction SilentlyContinue | Where-Object { $_.CommandLine -like "*start_web_ui.py*" }
     if ($webProcesses) {
         $webProcesses | Stop-Process -Force
-        Write-Success "Web UI stopped"
+        Write-Success "Main Web UI stopped"
+        Start-Sleep -Seconds 2
+    }
+    
+    # User Panel service (Kullanıcı Paneli)
+    Write-Info "Stopping User Panel..."
+    $userPanelProcesses = Get-Process -Name "python" -ErrorAction SilentlyContinue | Where-Object { $_.CommandLine -like "*start_user_panel.py*" }
+    if ($userPanelProcesses) {
+        $userPanelProcesses | Stop-Process -Force
+        Write-Success "User Panel stopped"
         Start-Sleep -Seconds 2
     }
     
@@ -173,26 +182,43 @@ if (-not $NoRestart) {
     
     Write-Info "Starting services..."
     
-    # Start Web UI
-    Write-Info "Starting Web UI..."
+    # Start Main Web UI (Ana Panel)
+    Write-Info "Starting Main Web UI (Port 5000)..."
     Start-Process -FilePath "powershell" -ArgumentList "-Command", "cd '$currentDir'; .\venv\Scripts\Activate.ps1; python start_web_ui.py --port 5000 --host 127.0.0.1" -WindowStyle Minimized
     Start-Sleep -Seconds 3
     
-    # Start Cloudflare Tunnel
+    # Start User Panel (Kullanıcı Paneli)
+    Write-Info "Starting User Panel (Port 3000)..."
+    Start-Process -FilePath "powershell" -ArgumentList "-Command", "cd '$currentDir'; .\venv\Scripts\Activate.ps1; python start_user_panel.py" -WindowStyle Minimized
+    Start-Sleep -Seconds 3
+    
+    # Start Cloudflare Tunnels (Her panel için ayrı tunnel)
     $cloudflaredPath = ""
     if (Test-Path "cloudflared.exe") {
         $cloudflaredPath = ".\cloudflared.exe"
     } elseif (Test-Path "C:\Users\Administrator\cloudflared.exe") {
         $cloudflaredPath = "C:\Users\Administrator\cloudflared.exe"
+    } elseif (Get-Command "cloudflared" -ErrorAction SilentlyContinue) {
+        $cloudflaredPath = "cloudflared"
     }
     
     if ($cloudflaredPath) {
-        Write-Info "Starting Cloudflare Tunnel..."
+        # Ana panel için tunnel (Port 5000)
+        Write-Info "Starting Cloudflare Tunnel for Main Panel (Port 5000)..."
         Start-Process -FilePath $cloudflaredPath -ArgumentList "tunnel", "--url", "http://localhost:5000" -WindowStyle Minimized
-        Start-Sleep -Seconds 3
-        Write-Success "Cloudflare Tunnel started"
+        Start-Sleep -Seconds 5
+        Write-Success "Main Panel Tunnel started"
+        
+        # Kullanıcı paneli için ayrı tunnel (Port 3000)
+        Write-Info "Starting Cloudflare Tunnel for User Panel (Port 3000)..."
+        Start-Process -FilePath $cloudflaredPath -ArgumentList "tunnel", "--url", "http://localhost:3000" -WindowStyle Minimized
+        Start-Sleep -Seconds 5
+        Write-Success "User Panel Tunnel started"
+        
+        Write-Success "Both Cloudflare Tunnels started successfully"
+        Write-Info "Tunnel URLs will be displayed in their respective console windows"
     } else {
-        Write-Warning "Cloudflared.exe not found!"
+        Write-Warning "Cloudflared not found! Install from: https://github.com/cloudflare/cloudflared/releases"
     }
     
     # Start Discord Bot (optional)
@@ -209,6 +235,7 @@ Write-Info "Checking service status..."
 Start-Sleep -Seconds 5
 
 $webRunning = Get-Process -Name "python" -ErrorAction SilentlyContinue | Where-Object { $_.CommandLine -like "*start_web_ui.py*" }
+$userPanelRunning = Get-Process -Name "python" -ErrorAction SilentlyContinue | Where-Object { $_.CommandLine -like "*start_user_panel.py*" }
 $tunnelRunning = Get-Process -Name "cloudflared" -ErrorAction SilentlyContinue
 $botRunning = Get-Process -Name "python" -ErrorAction SilentlyContinue | Where-Object { $_.CommandLine -like "*main.py*" }
 
@@ -217,15 +244,22 @@ Write-Host "Service Status:" -ForegroundColor Cyan
 Write-Host "===============" -ForegroundColor Cyan
 
 if ($webRunning) {
-    Write-Success "Web UI: Running"
+    Write-Success "Main Web UI (Port 5000): Running"
 } else {
-    Write-Warning "Web UI: Stopped"
+    Write-Warning "Main Web UI: Stopped"
+}
+
+if ($userPanelRunning) {
+    Write-Success "User Panel (Port 3000): Running"
+} else {
+    Write-Warning "User Panel: Stopped"
 }
 
 if ($tunnelRunning) {
-    Write-Success "Cloudflare Tunnel: Running"
+    $tunnelCount = ($tunnelRunning | Measure-Object).Count
+    Write-Success "Cloudflare Tunnels: $tunnelCount Running"
 } else {
-    Write-Warning "Cloudflare Tunnel: Stopped"
+    Write-Warning "Cloudflare Tunnels: Stopped"
 }
 
 if ($botRunning) {
@@ -240,10 +274,20 @@ Write-Host "Access URLs:" -ForegroundColor Green
 Write-Host "============" -ForegroundColor Green
 
 if ($tunnelRunning) {
-    Write-Host "Cloudflare Tunnel: Check tunnel logs for URL" -ForegroundColor Yellow
+    $tunnelCount = ($tunnelRunning | Measure-Object).Count
+    Write-Host "Cloudflare Tunnels Active: $tunnelCount" -ForegroundColor Yellow
+    Write-Host "Main Panel Tunnel: Check first cloudflared window for URL" -ForegroundColor Yellow
+    Write-Host "User Panel Tunnel: Check second cloudflared window for URL" -ForegroundColor Yellow
 }
 
-Write-Host "Local: http://localhost:5000" -ForegroundColor Cyan
+Write-Host "Local Main Panel: http://localhost:5000" -ForegroundColor Cyan
+Write-Host "Local User Panel: http://localhost:3000" -ForegroundColor Cyan
+
+Write-Host ""
+Write-Host "Tunnel Management:" -ForegroundColor Magenta
+Write-Host "- Each panel has its own tunnel with unique URL" -ForegroundColor Gray
+Write-Host "- Check cloudflared console windows for tunnel URLs" -ForegroundColor Gray
+Write-Host "- Update Discord OAuth redirect URI with User Panel tunnel URL" -ForegroundColor Gray
 
 # Last commit info
 $lastCommit = git log -1 --pretty=format:"%h - %s (%cr)"
