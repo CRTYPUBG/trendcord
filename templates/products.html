@@ -81,7 +81,7 @@
                 </div>
 
                 <div class="card-actions justify-end">
-                    <button class="btn btn-sm btn-primary" onclick="viewProduct('{{ product.product_id }}')">
+                    <button class="btn btn-sm btn-primary" onclick="viewProduct('{{ product.url }}')">
                         <i class="fas fa-eye"></i>
                     </button>
                     <button class="btn btn-sm btn-secondary"
@@ -175,8 +175,13 @@
         window.location.href = url.toString();
     }
 
-    function viewProduct(productId) {
-        window.open(`https://www.trendyol.com/sr?q=&pi=${productId}`, '_blank');
+    function viewProduct(productUrl) {
+        // Ürün URL'sini direkt kullan
+        if (productUrl && productUrl.startsWith('http')) {
+            window.open(productUrl, '_blank');
+        } else {
+            showToast('Geçersiz ürün URL\'si', 'error');
+        }
     }
 
     function editPrice(productId, currentPrice) {

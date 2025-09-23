@@ -107,6 +107,15 @@ async def load_cogs():
     except Exception as e:
         logger.error(f"Bildirim komutları yüklenirken hata: {e}")
         traceback.print_exc()
+    
+    # Site monitoring komutlarını manuel olarak ekle
+    try:
+        from cogs.monitoring_commands import MonitoringCommands
+        await bot.add_cog(MonitoringCommands(bot))
+        logger.info("Site monitoring komutları yüklendi")
+    except Exception as e:
+        logger.error(f"Site monitoring komutları yüklenirken hata: {e}")
+        traceback.print_exc()
 
 @tasks.loop(seconds=CHECK_INTERVAL)
 async def check_prices():

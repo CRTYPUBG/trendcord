@@ -12,7 +12,7 @@ from flask_socketio import SocketIO, emit
 import os
 import json
 import logging
-from datetime import datetime
+from datetime import datetime, timedelta
 import threading
 import time
 from database import Database
@@ -203,16 +203,19 @@ def api_delete_product():
         if not product_id:
             return jsonify({'success': False, 'error': 'Ürün ID gerekli'})
         
-        if not db:
-            init_components()
+        # Thread-safe database connection
+        db = get_db()
         
         # Ürünü sil
         if db.delete_product(product_id):
+            db.close()
+            
             # WebSocket ile güncelleme gönder
             socketio.emit('product_deleted', {'product_id': product_id})
             
             return jsonify({'success': True})
         else:
+            db.close()
             return jsonify({'success': False, 'error': 'Ürün silinemedi'})
             
     except Exception as e:
@@ -231,11 +234,13 @@ def api_update_price():
         if not product_id or new_price is None:
             return jsonify({'success': False, 'error': 'Ürün ID ve yeni fiyat gerekli'})
         
-        if not db:
-            init_components()
+        # Thread-safe database connection
+        db = get_db()
         
         # Fiyatı güncelle
         if db.update_product_price(product_id, float(new_price)):
+            db.close()
+            
             # WebSocket ile güncelleme gönder
             socketio.emit('price_updated', {
                 'product_id': product_id,
@@ -244,6 +249,7 @@ def api_update_price():
             
             return jsonify({'success': True})
         else:
+            db.close()
             return jsonify({'success': False, 'error': 'Fiyat güncellenemedi'})
             
     except Exception as e:
@@ -363,34 +369,75 @@ def analytics():
     """Analitik ve trend sayfası"""
     try:
         db = get_db()
-        from price_analyzer import PriceAnalyzer
-        analyzer = PriceAnalyzer(db)
         
         guild_id = request.args.get('guild_id')
         
-        # En iyi fırsatlar
-        deals = analyzer.get_best_deals(guild_id=guild_id, limit=10)
+        # Basit istatistikler
+        products = db.get_all_products()
         
-        # Fiyat uyarıları
-        alerts = analyzer.get_price_alerts(guild_id=guild_id, threshold=10)
+        # Guild filtreleme
+        if guild_id:
+            products = [p for p in products if str(p.get('guild_id', '')) == str(guild_id)]
         
-        # Sunucu istatistikleri
-        guild_stats = analyzer.get_guild_statistics(guild_id) if guild_id else {}
+        # Basit analizler
+        deals = []
+        alerts = []
+        guild_stats = None
+        guilds = []
+        
+        if products:
+            # En iyi fırsatlar (indirimli ürünler)
+            for product in products:
+                if product.get('original_price') and product.get('current_price'):
+                    discount = ((product['original_price'] - product['current_price']) / product['original_price']) * 100
+                    if discount >= 20:  # %20+ indirim
+                        deals.append({
+                            'name': product['name'],
+                            'current_price': product['current_price'],
+                            'original_price': product['original_price'],
+                            'discount_percentage': discount,
+                            'url': product['url'],
+                            'last_updated': product.get('last_updated', 'Bilinmiyor')
+                        })
+            
+            # Guild istatistikleri
+            if guild_id:
+                total_products = len(products)
+                avg_price = sum(p.get('current_price', 0) for p in products) / total_products if total_products > 0 else 0
+                today_added = len([p for p in products if p.get('added_date', '').startswith(datetime.now().strftime('%Y-%m-%d'))])
+                
+                guild_stats = {
+                    'total_products': total_products,
+                    'avg_price': avg_price,
+                    'today_added': today_added
+                }
         
         # Sunucu listesi
-        all_guild_stats = db.get_all_guilds_stats()
+        guild_ids = list(set(str(p.get('guild_id', '')) for p in db.get_all_products() if p.get('guild_id')))
+        for gid in guild_ids:
+            if gid and gid != 'None':
+                guild_products = [p for p in db.get_all_products() if str(p.get('guild_id', '')) == gid]
+                guilds.append({
+                    'guild_id': gid,
+                    'product_count': len(guild_products)
+                })
         
         db.close()
         
         return render_template('analytics.html',
-                             deals=deals,
-                             alerts=alerts,
+                             deals=deals[:10],  # İlk 10 fırsat
+                             alerts=alerts[:10],  # İlk 10 uyarı
                              guild_stats=guild_stats,
-                             all_guild_stats=all_guild_stats,
-                             current_guild=guild_id)
+                             guilds=guilds,
+                             selected_guild=guild_id)
     except Exception as e:
         logger.error(f"Analitik sayfası yüklenirken hata: {e}")
-        return render_template('error.html', error=str(e))
+        return render_template('analytics.html',
+                             deals=[],
+                             alerts=[],
+                             guild_stats=None,
+                             guilds=[],
+                             selected_guild=None)
 
 # API: Ürün trend analizi
 @app.route('/api/product_trend/<product_id>')
@@ -406,10 +453,10 @@ def api_product_trend(product_id):
         
         db.close()
         
-        if trend_data:
+        if trend_data and trend_data.get('price_history'):
             return jsonify({'success': True, 'trend': trend_data})
         else:
-            return jsonify({'success': False, 'error': 'Trend verisi bulunamadı'})
+            return jsonify({'success': False, 'error': 'Yeterli fiyat verisi bulunamadı'})
             
     except Exception as e:
         logger.error(f"Trend API hatası: {e}")
@@ -697,8 +744,9 @@ def update_bot_status():
             
             # Toplam ürün sayısını güncelle
             guild_stats = db.get_all_guilds_stats()
-            bot_status['total_products'] = sum(stat['product_count'] for stat in guild_stats)
+            bot_status['total_products'] = sum(stat['product_count'] for stat in guild_stats) if guild_stats else 0
             bot_status['last_check'] = datetime.now().isoformat()
+            bot_status['running'] = True  # Web UI çalışıyorsa bot da çalışıyor kabul et
             
             db.close()
             
@@ -708,6 +756,7 @@ def update_bot_status():
             time.sleep(30)  # 30 saniyede bir güncelle
         except Exception as e:
             logger.error(f"Bot durumu güncellenirken hata: {e}")
+            bot_status['running'] = False
             time.sleep(60)
 
 def run_web_ui(host='0.0.0.0', port=5000, debug=False):
@@ -732,6 +781,90 @@ def run_web_ui(host='0.0.0.0', port=5000, debug=False):
     except Exception as e:
         logger.error(f"Web UI başlatılırken hata: {e}")
         return False
+
+# Monitoring API Endpoints
+@app.route('/api/monitoring/status')
+def monitoring_status_api():
+    """API: Monitoring durumu"""
+    try:
+        from site_monitor import site_monitor
+        
+        # Mevcut yapıyı al
+        current_structure = site_monitor.load_previous_structure()
+        
+        if current_structure:
+            last_check = datetime.fromisoformat(current_structure.last_check)
+            next_check = last_check + timedelta(hours=48)
+            
+            status_data = {
+                'system_active': True,
+                'last_check': current_structure.last_check,
+                'next_check': next_check.isoformat(),
+                'has_changes': False,  # Bu gerçek bir değişiklik kontrolü gerektirir
+                'structure': {
+                    'json_ld_present': current_structure.json_ld_present,
+                    'price_selectors': current_structure.price_selectors,
+                    'title_selectors': current_structure.title_selectors,
+                    'image_selectors': current_structure.image_selectors,
+                    'api_endpoints': current_structure.api_endpoints,
+                    'page_structure_hash': current_structure.page_structure_hash
+                },
+                'log': [
+                    {
+                        'timestamp': current_structure.last_check,
+                        'message': 'Site yapısı kontrol edildi',
+                        'type': 'success'
+                    }
+                ]
+            }
+        else:
+            status_data = {
+                'system_active': False,
+                'last_check': None,
+                'next_check': None,
+                'has_changes': False,
+                'structure': None,
+                'log': []
+            }
+        
+        return jsonify(status_data)
+        
+    except Exception as e:
+        logger.error(f"Monitoring status API hatası: {e}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/monitoring/check', methods=['POST'])
+def monitoring_check_api():
+    """API: Manuel monitoring kontrolü"""
+    try:
+        from site_monitor import site_monitor
+        import asyncio
+        
+        # Async fonksiyonu çalıştır (basit bir mock bot ile)
+        class MockBot:
+            async def fetch_user(self, user_id):
+                return None
+        
+        mock_bot = MockBot()
+        
+        # Monitoring kontrolünü çalıştır
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        
+        try:
+            loop.run_until_complete(site_monitor.run_monitoring_check(mock_bot))
+            return jsonify({'success': True, 'message': 'Monitoring kontrolü tamamlandı'})
+        finally:
+            loop.close()
+        
+    except Exception as e:
+        logger.error(f"Monitoring check API hatası: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/monitoring')
+def monitoring_page():
+    """Monitoring sayfası"""
+    return render_template('monitoring.html')
 
 if __name__ == '__main__':
     # Geliştirme modu

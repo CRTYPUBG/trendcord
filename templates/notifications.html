@@ -1,134 +1,222 @@
-<!DOCTYPE html>
-<html lang="tr">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Bildirimler - Trendyol Bot</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
-    <style>
-        .notification-card { border-left: 4px solid #007bff; }
-        .target-card { border-left: 4px solid #28a745; }
-        .alert-card { border-left: 4px solid #ffc107; }
-        .unread { background-color: #f8f9fa; font-weight: bold; }
-        .price-target { background: linear-gradient(135deg, #28a745 0%, #20c997 100%); color: white; }
-    </style>
-</head>
-<body class="bg-light">
-    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
-        <div class="container">
-            <a class="navbar-brand" href="/">
-                <i class="fas fa-bell me-2"></i>Trendyol Bot - Bildirimler
-            </a>
-            <div class="navbar-nav ms-auto">
-                <a class="nav-link" href="/"><i class="fas fa-home"></i> Ana Sayfa</a>
-                <a class="nav-link" href="/products"><i class="fas fa-box"></i> Ürünler</a>
-                <a class="nav-link" href="/analytics"><i class="fas fa-chart-bar"></i> Analitik</a>
-                <a class="nav-link active" href="/notifications"><i class="fas fa-bell"></i> Bildirimler</a>
+{% extends "base.html" %}
+
+{% block title %}Bildirimler - Trendyol Bot{% endblock %}
+
+{% block content %}
+<div class="min-h-screen bg-gradient-to-br from-base-100 via-base-200 to-base-300">
+    <div class="container mx-auto px-4 py-8">
+        <!-- Page Header -->
+        <div class="flex flex-col lg:flex-row lg:items-center justify-between mb-12 bg-base-100/80 backdrop-blur-sm rounded-2xl p-6 shadow-xl border border-base-300/50">
+            <div class="mb-4 lg:mb-0">
+                <div class="flex items-center mb-3">
+                    <div class="w-12 h-12 bg-gradient-to-r from-primary to-secondary rounded-xl flex items-center justify-center mr-4 shadow-lg">
+                        <i class="fas fa-bell text-xl text-white"></i>
+                    </div>
+                    <div>
+                        <h1 class="text-4xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
+                            Bildirimler
+                        </h1>
+                        <p class="text-base-content/70 text-lg">Fiyat hedefleri ve bildirim yönetimi</p>
+                    </div>
+                </div>
+            </div>
+            <div class="flex flex-wrap gap-3">
+                <button onclick="markAllRead()" class="btn btn-outline btn-primary hover:scale-105 transition-all duration-300 shadow-lg">
+                    <i class="fas fa-check mr-2"></i>Tümünü Okundu İşaretle
+                </button>
+                <button onclick="loadNotificationData()" class="btn btn-primary hover:scale-105 transition-all duration-300 shadow-lg">
+                    <i class="fas fa-sync-alt mr-2"></i>Yenile
+                </button>
             </div>
         </div>
-    </nav>
 
-    <div class="container mt-4">
-        <!-- Bildirim Özeti -->
-        <div class="row mb-4">
-            <div class="col-md-3">
-                <div class="card text-center">
-                    <div class="card-body">
-                        <h5 class="card-title text-primary">
-                            <i class="fas fa-bell fa-2x"></i>
-                        </h5>
-                        <h3 id="totalNotifications">0</h3>
-                        <p class="card-text">Toplam Bildirim</p>
+        <!-- İstatistik Kartları -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 mb-12">
+            <!-- Toplam Bildirim -->
+            <div class="group relative">
+                <div class="absolute -inset-1 bg-gradient-to-r from-primary to-secondary rounded-2xl blur opacity-25 group-hover:opacity-75 transition duration-1000 group-hover:duration-200"></div>
+                <div class="relative card bg-gradient-to-br from-primary via-primary-focus to-secondary text-primary-content shadow-2xl hover:shadow-3xl transition-all duration-500 hover:scale-105 border border-primary/20">
+                    <div class="card-body text-center p-8">
+                        <div class="w-16 h-16 mx-auto mb-4 bg-white/20 rounded-2xl flex items-center justify-center backdrop-blur-sm">
+                            <i class="fas fa-bell text-2xl"></i>
+                        </div>
+                        <div class="text-4xl font-bold mb-2 animate-pulse" id="totalNotifications">0</div>
+                        <div class="text-primary-content/90 font-medium">Toplam Bildirim</div>
+                        <div class="mt-3 h-1 bg-white/20 rounded-full overflow-hidden">
+                            <div class="h-full bg-white/40 rounded-full animate-pulse"></div>
+                        </div>
                     </div>
                 </div>
             </div>
-            <div class="col-md-3">
-                <div class="card text-center">
-                    <div class="card-body">
-                        <h5 class="card-title text-warning">
-                            <i class="fas fa-envelope fa-2x"></i>
-                        </h5>
-                        <h3 id="unreadNotifications">0</h3>
-                        <p class="card-text">Okunmamış</p>
+
+            <!-- Okunmamış -->
+            <div class="group relative">
+                <div class="absolute -inset-1 bg-gradient-to-r from-warning to-orange-500 rounded-2xl blur opacity-25 group-hover:opacity-75 transition duration-1000 group-hover:duration-200"></div>
+                <div class="relative card bg-gradient-to-br from-warning via-warning-focus to-orange-500 text-warning-content shadow-2xl hover:shadow-3xl transition-all duration-500 hover:scale-105 border border-warning/20">
+                    <div class="card-body text-center p-8">
+                        <div class="w-16 h-16 mx-auto mb-4 bg-white/20 rounded-2xl flex items-center justify-center backdrop-blur-sm">
+                            <i class="fas fa-envelope text-2xl"></i>
+                        </div>
+                        <div class="text-4xl font-bold mb-2 animate-bounce" id="unreadNotifications">0</div>
+                        <div class="text-warning-content/90 font-medium">Okunmamış</div>
+                        <div class="mt-3 h-1 bg-white/20 rounded-full overflow-hidden">
+                            <div class="h-full bg-white/40 rounded-full animate-pulse"></div>
+                        </div>
                     </div>
                 </div>
             </div>
-            <div class="col-md-3">
-                <div class="card text-center">
-                    <div class="card-body">
-                        <h5 class="card-title text-success">
-                            <i class="fas fa-bullseye fa-2x"></i>
-                        </h5>
-                        <h3 id="activeTargets">0</h3>
-                        <p class="card-text">Aktif Hedefler</p>
+
+            <!-- Aktif Hedefler -->
+            <div class="group relative">
+                <div class="absolute -inset-1 bg-gradient-to-r from-success to-emerald-500 rounded-2xl blur opacity-25 group-hover:opacity-75 transition duration-1000 group-hover:duration-200"></div>
+                <div class="relative card bg-gradient-to-br from-success via-success-focus to-emerald-500 text-success-content shadow-2xl hover:shadow-3xl transition-all duration-500 hover:scale-105 border border-success/20">
+                    <div class="card-body text-center p-8">
+                        <div class="w-16 h-16 mx-auto mb-4 bg-white/20 rounded-2xl flex items-center justify-center backdrop-blur-sm">
+                            <i class="fas fa-bullseye text-2xl"></i>
+                        </div>
+                        <div class="text-4xl font-bold mb-2" id="activeTargets">0</div>
+                        <div class="text-success-content/90 font-medium">Aktif Hedefler</div>
+                        <div class="mt-3 h-1 bg-white/20 rounded-full overflow-hidden">
+                            <div class="h-full bg-white/40 rounded-full animate-pulse"></div>
+                        </div>
                     </div>
                 </div>
             </div>
-            <div class="col-md-3">
-                <div class="card text-center">
-                    <div class="card-body">
-                        <h5 class="card-title text-info">
-                            <i class="fas fa-chart-line fa-2x"></i>
-                        </h5>
-                        <h3 id="todayAlerts">0</h3>
-                        <p class="card-text">Bugünkü Uyarılar</p>
+
+            <!-- Bugünkü Uyarılar -->
+            <div class="group relative">
+                <div class="absolute -inset-1 bg-gradient-to-r from-info to-cyan-500 rounded-2xl blur opacity-25 group-hover:opacity-75 transition duration-1000 group-hover:duration-200"></div>
+                <div class="relative card bg-gradient-to-br from-info via-info-focus to-cyan-500 text-info-content shadow-2xl hover:shadow-3xl transition-all duration-500 hover:scale-105 border border-info/20">
+                    <div class="card-body text-center p-8">
+                        <div class="w-16 h-16 mx-auto mb-4 bg-white/20 rounded-2xl flex items-center justify-center backdrop-blur-sm">
+                            <i class="fas fa-chart-line text-2xl"></i>
+                        </div>
+                        <div class="text-4xl font-bold mb-2" id="todayAlerts">0</div>
+                        <div class="text-info-content/90 font-medium">Bugünkü Uyarılar</div>
+                        <div class="mt-3 h-1 bg-white/20 rounded-full overflow-hidden">
+                            <div class="h-full bg-white/40 rounded-full animate-pulse"></div>
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
 
         <!-- Fiyat Hedefi Ekleme -->
-        <div class="row mb-4">
-            <div class="col-12">
-                <div class="card price-target">
-                    <div class="card-header">
-                        <h5 class="mb-0"><i class="fas fa-plus me-2"></i>Yeni Fiyat Hedefi Ekle</h5>
+        <div class="relative mb-12">
+            <div class="absolute -inset-1 bg-gradient-to-r from-success via-accent to-emerald-500 rounded-3xl blur opacity-30"></div>
+            <div class="relative card bg-gradient-to-br from-success/10 via-accent/10 to-emerald-500/10 backdrop-blur-xl shadow-2xl border border-success/30 rounded-3xl overflow-hidden">
+                <div class="absolute inset-0 bg-gradient-to-r from-success/5 to-accent/5"></div>
+                <div class="relative card-header bg-gradient-to-r from-success/20 to-accent/20 backdrop-blur-sm border-b border-success/20 p-6">
+                    <div class="flex items-center">
+                        <div class="w-12 h-12 bg-gradient-to-r from-success to-accent rounded-xl flex items-center justify-center mr-4 shadow-lg">
+                            <i class="fas fa-plus text-xl text-white"></i>
+                        </div>
+                        <div>
+                            <h2 class="text-2xl font-bold bg-gradient-to-r from-success to-accent bg-clip-text text-transparent">
+                                Yeni Fiyat Hedefi Ekle
+                            </h2>
+                            <p class="text-base-content/70">Ürün fiyatı istediğiniz seviyeye geldiğinde bildirim alın</p>
+                        </div>
                     </div>
-                    <div class="card-body">
-                        <form id="addTargetForm">
-                            <div class="row">
-                                <div class="col-md-4">
-                                    <label for="productUrl" class="form-label">Ürün URL'si veya ID</label>
-                                    <input type="text" class="form-control" id="productUrl" placeholder="https://www.trendyol.com/..." required>
-                                </div>
-                                <div class="col-md-3">
-                                    <label for="targetPrice" class="form-label">Hedef Fiyat (₺)</label>
-                                    <input type="number" class="form-control" id="targetPrice" step="0.01" min="0" placeholder="299.99" required>
-                                </div>
-                                <div class="col-md-3">
-                                    <label for="condition" class="form-label">Koşul</label>
-                                    <select class="form-select" id="condition" required>
-                                        <option value="below">Altına düştüğünde</option>
-                                        <option value="above">Üstüne çıktığında</option>
-                                    </select>
-                                </div>
-                                <div class="col-md-2">
-                                    <label class="form-label">&nbsp;</label>
-                                    <button type="submit" class="btn btn-light w-100">
-                                        <i class="fas fa-plus"></i> Ekle
-                                    </button>
+                </div>
+                <div class="relative card-body p-8">
+                    <form id="addTargetForm" class="space-y-6">
+                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                            <div class="form-control group">
+                                <label class="label">
+                                    <span class="label-text font-semibold text-base-content flex items-center">
+                                        <i class="fas fa-link mr-2 text-primary"></i>
+                                        Ürün URL'si veya ID
+                                    </span>
+                                </label>
+                                <div class="relative">
+                                    <input type="text" 
+                                           class="input input-bordered w-full bg-base-100/80 backdrop-blur-sm border-2 border-base-300 focus:border-primary focus:bg-base-100 transition-all duration-300 hover:border-primary/50 pl-12" 
+                                           id="productUrl" 
+                                           placeholder="https://www.trendyol.com/..." 
+                                           required>
+                                    <i class="fas fa-globe absolute left-4 top-1/2 transform -translate-y-1/2 text-base-content/50 group-focus-within:text-primary transition-colors"></i>
                                 </div>
                             </div>
-                        </form>
-                    </div>
+                            
+                            <div class="form-control group">
+                                <label class="label">
+                                    <span class="label-text font-semibold text-base-content flex items-center">
+                                        <i class="fas fa-lira-sign mr-2 text-warning"></i>
+                                        Hedef Fiyat (₺)
+                                    </span>
+                                </label>
+                                <div class="relative">
+                                    <input type="number" 
+                                           class="input input-bordered w-full bg-base-100/80 backdrop-blur-sm border-2 border-base-300 focus:border-warning focus:bg-base-100 transition-all duration-300 hover:border-warning/50 pl-12" 
+                                           id="targetPrice" 
+                                           step="0.01" 
+                                           min="0" 
+                                           placeholder="299.99" 
+                                           required>
+                                    <i class="fas fa-tag absolute left-4 top-1/2 transform -translate-y-1/2 text-base-content/50 group-focus-within:text-warning transition-colors"></i>
+                                </div>
+                            </div>
+                            
+                            <div class="form-control group">
+                                <label class="label">
+                                    <span class="label-text font-semibold text-base-content flex items-center">
+                                        <i class="fas fa-cog mr-2 text-info"></i>
+                                        Koşul
+                                    </span>
+                                </label>
+                                <select class="select select-bordered w-full bg-base-100/80 backdrop-blur-sm border-2 border-base-300 focus:border-info focus:bg-base-100 transition-all duration-300 hover:border-info/50" id="condition" required>
+                                    <option value="below">⬇️ Altına düştüğünde</option>
+                                    <option value="above">⬆️ Üstüne çıktığında</option>
+                                </select>
+                            </div>
+                            
+                            <div class="form-control">
+                                <label class="label">
+                                    <span class="label-text opacity-0">Ekle</span>
+                                </label>
+                                <button type="submit" class="btn btn-primary btn-lg w-full bg-gradient-to-r from-primary to-secondary hover:from-primary-focus hover:to-secondary-focus border-0 shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105">
+                                    <i class="fas fa-plus mr-2"></i>
+                                    <span class="font-semibold">Hedef Ekle</span>
+                                </button>
+                            </div>
+                        </div>
+                    </form>
                 </div>
             </div>
         </div>
 
         <!-- Aktif Fiyat Hedefleri -->
-        <div class="row mb-4">
-            <div class="col-12">
-                <div class="card">
-                    <div class="card-header bg-success text-white">
-                        <h5 class="mb-0"><i class="fas fa-bullseye me-2"></i>Aktif Fiyat Hedefleri</h5>
-                    </div>
-                    <div class="card-body">
-                        <div id="priceTargets">
-                            <div class="text-center text-muted py-4">
-                                <i class="fas fa-bullseye fa-3x mb-3"></i>
-                                <p>Henüz aktif fiyat hedefiniz bulunmuyor.</p>
+        <div class="relative mb-12">
+            <div class="absolute -inset-1 bg-gradient-to-r from-success to-emerald-500 rounded-3xl blur opacity-20"></div>
+            <div class="relative card bg-base-100/80 backdrop-blur-xl shadow-2xl border border-success/20 rounded-3xl overflow-hidden">
+                <div class="card-header bg-gradient-to-r from-success/10 to-emerald-500/10 backdrop-blur-sm border-b border-success/20 p-6">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center">
+                            <div class="w-12 h-12 bg-gradient-to-r from-success to-emerald-500 rounded-xl flex items-center justify-center mr-4 shadow-lg">
+                                <i class="fas fa-bullseye text-xl text-white"></i>
                             </div>
+                            <div>
+                                <h2 class="text-2xl font-bold bg-gradient-to-r from-success to-emerald-500 bg-clip-text text-transparent">
+                                    Aktif Fiyat Hedefleri
+                                </h2>
+                                <p class="text-base-content/70">Takip edilen fiyat hedefleriniz</p>
+                            </div>
+                        </div>
+                        <div class="badge badge-success badge-lg font-semibold">
+                            <span id="targetCount">0</span> Hedef
+                        </div>
+                    </div>
+                </div>
+                <div class="card-body p-8">
+                    <div id="priceTargets">
+                        <div class="text-center py-16">
+                            <div class="relative">
+                                <div class="loading loading-spinner loading-lg text-primary mb-6"></div>
+                                <div class="absolute inset-0 bg-gradient-to-r from-primary/20 to-secondary/20 rounded-full blur-xl"></div>
+                            </div>
+                            <h3 class="text-xl font-semibold text-base-content mb-2">Fiyat hedefleri yükleniyor...</h3>
+                            <p class="text-base-content/70">Lütfen bekleyin</p>
                         </div>
                     </div>
                 </div>
@@ -136,274 +224,418 @@
         </div>
 
         <!-- Bildirim Geçmişi -->
-        <div class="row mb-4">
-            <div class="col-12">
-                <div class="card">
-                    <div class="card-header bg-info text-white d-flex justify-content-between align-items-center">
-                        <h5 class="mb-0"><i class="fas fa-history me-2"></i>Bildirim Geçmişi</h5>
-                        <button class="btn btn-light btn-sm" onclick="markAllRead()">
-                            <i class="fas fa-check"></i> Tümünü Okundu İşaretle
-                        </button>
-                    </div>
-                    <div class="card-body">
-                        <div id="notificationHistory">
-                            <div class="text-center text-muted py-4">
-                                <i class="fas fa-bell fa-3x mb-3"></i>
-                                <p>Henüz bildirim geçmişiniz bulunmuyor.</p>
+        <div class="relative mb-12">
+            <div class="absolute -inset-1 bg-gradient-to-r from-info to-cyan-500 rounded-3xl blur opacity-20"></div>
+            <div class="relative card bg-base-100/80 backdrop-blur-xl shadow-2xl border border-info/20 rounded-3xl overflow-hidden">
+                <div class="card-header bg-gradient-to-r from-info/10 to-cyan-500/10 backdrop-blur-sm border-b border-info/20 p-6">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center">
+                            <div class="w-12 h-12 bg-gradient-to-r from-info to-cyan-500 rounded-xl flex items-center justify-center mr-4 shadow-lg">
+                                <i class="fas fa-history text-xl text-white"></i>
                             </div>
+                            <div>
+                                <h2 class="text-2xl font-bold bg-gradient-to-r from-info to-cyan-500 bg-clip-text text-transparent">
+                                    Bildirim Geçmişi
+                                </h2>
+                                <p class="text-base-content/70">Geçmiş bildirimleriniz ve durumları</p>
+                            </div>
+                        </div>
+                        <div class="flex gap-2">
+                            <div class="badge badge-info badge-lg font-semibold">
+                                <span id="historyCount">0</span> Bildirim
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-body p-8">
+                    <div id="notificationHistory">
+                        <div class="text-center py-16">
+                            <div class="relative">
+                                <div class="loading loading-spinner loading-lg text-primary mb-6"></div>
+                                <div class="absolute inset-0 bg-gradient-to-r from-primary/20 to-secondary/20 rounded-full blur-xl"></div>
+                            </div>
+                            <h3 class="text-xl font-semibold text-base-content mb-2">Bildirim geçmişi yükleniyor...</h3>
+                            <p class="text-base-content/70">Lütfen bekleyin</p>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
     </div>
+</div>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
-    <script>
-        // Sayfa yüklendiğinde verileri getir
-        document.addEventListener('DOMContentLoaded', function() {
-            loadNotificationData();
-        });
+<!-- Toast Container -->
+<div id="toast-container" class="toast toast-top toast-end"></div>
+{% endblock %}
 
-        function loadNotificationData() {
-            // Fiyat hedeflerini yükle
-            loadPriceTargets();
-            
-            // Bildirim geçmişini yükle
-            loadNotificationHistory();
-            
-            // İstatistikleri güncelle
-            updateStats();
-        }
+{% block scripts %}
+<script>
+    // Sayfa yüklendiğinde verileri getir
+    document.addEventListener('DOMContentLoaded', function() {
+        loadNotificationData();
+        
+        // Her 30 saniyede bir verileri yenile
+        setInterval(loadNotificationData, 30000);
+    });
 
-        function loadPriceTargets() {
-            fetch('/api/price_targets')
-                .then(response => response.json())
-                .then(data => {
-                    const container = document.getElementById('priceTargets');
+    function loadNotificationData() {
+        // Fiyat hedeflerini yükle
+        loadPriceTargets();
+        
+        // Bildirim geçmişini yükle
+        loadNotificationHistory();
+        
+        // İstatistikleri güncelle
+        updateStats();
+    }
+
+    function loadPriceTargets() {
+        fetch('/api/price_targets')
+            .then(response => response.json())
+            .then(data => {
+                const container = document.getElementById('priceTargets');
+                
+                if (data.success && data.targets && data.targets.length > 0) {
+                    let html = '<div class="space-y-4">';
                     
-                    if (data.success && data.targets && data.targets.length > 0) {
-                        let html = '';
+                    data.targets.forEach(target => {
+                        const conditionText = target.condition === 'below' ? 'altına düşerse' : 'üstüne çıkarsa';
+                        const conditionIcon = target.condition === 'below' ? 'fa-arrow-down text-success' : 'fa-arrow-up text-error';
+                        const conditionBadge = target.condition === 'below' ? 'badge-success' : 'badge-error';
                         
-                        data.targets.forEach(target => {
-                            const conditionText = target.condition === 'below' ? 'altına düşerse' : 'üstüne çıkarsa';
-                            const conditionIcon = target.condition === 'below' ? 'fa-arrow-down text-success' : 'fa-arrow-up text-danger';
-                            
-                            // Hedefe ne kadar kaldığını hesapla
-                            const distance = target.condition === 'below' 
-                                ? target.current_price - target.target_price
-                                : target.target_price - target.current_price;
-                            
-                            const distanceText = distance > 0 
-                                ? `₺${distance.toFixed(2)} ${target.condition === 'below' ? 'daha düşmeli' : 'daha yükselmeli'}`
-                                : '🎉 Hedef gerçekleşti!';
-                            
-                            html += `
-                                <div class="card target-card mb-3">
-                                    <div class="card-body">
-                                        <div class="row align-items-center">
-                                            <div class="col-md-6">
-                                                <h6 class="card-title mb-1">${target.product_name}</h6>
-                                                <small class="text-muted">Hedef ID: ${target.id}</small>
-                                            </div>
-                                            <div class="col-md-2">
-                                                <div class="text-center">
-                                                    <i class="fas ${conditionIcon}"></i>
-                                                    <div>₺${target.target_price.toFixed(2)}</div>
-                                                    <small>${conditionText}</small>
+                        // Hedefe ne kadar kaldığını hesapla
+                        const distance = target.condition === 'below' 
+                            ? target.current_price - target.target_price
+                            : target.target_price - target.current_price;
+                        
+                        const isTargetMet = distance <= 0;
+                        const distanceText = isTargetMet
+                            ? '🎉 Hedef gerçekleşti!'
+                            : `₺${Math.abs(distance).toFixed(2)} ${target.condition === 'below' ? 'daha düşmeli' : 'daha yükselmeli'}`;
+                        
+                        const cardClass = isTargetMet ? 'border-l-4 border-success bg-success/10' : 'border-l-4 border-primary bg-base-100';
+                        
+                        html += `
+                            <div class="group relative">
+                                <div class="absolute -inset-1 bg-gradient-to-r ${isTargetMet ? 'from-success to-emerald-500' : 'from-primary to-secondary'} rounded-2xl blur opacity-20 group-hover:opacity-40 transition duration-500"></div>
+                                <div class="relative card ${isTargetMet ? 'bg-gradient-to-br from-success/10 to-emerald-500/10 border-success/30' : 'bg-base-100/80 border-primary/20'} backdrop-blur-sm shadow-xl hover:shadow-2xl transition-all duration-500 hover:scale-[1.02] border rounded-2xl overflow-hidden">
+                                    ${isTargetMet ? '<div class="absolute top-0 right-0 w-0 h-0 border-l-[60px] border-l-transparent border-t-[60px] border-t-success"><i class="fas fa-check absolute -top-12 -right-4 text-white text-sm"></i></div>' : ''}
+                                    <div class="card-body p-6">
+                                        <div class="flex flex-col lg:flex-row lg:items-center gap-6">
+                                            <div class="flex-1">
+                                                <div class="flex items-start gap-3 mb-3">
+                                                    <div class="w-10 h-10 bg-gradient-to-r from-primary to-secondary rounded-xl flex items-center justify-center flex-shrink-0">
+                                                        <i class="fas fa-box text-white text-sm"></i>
+                                                    </div>
+                                                    <div class="flex-1">
+                                                        <h3 class="font-bold text-base-content text-lg leading-tight mb-2">${target.product_name}</h3>
+                                                        <div class="flex flex-wrap gap-2">
+                                                            <span class="badge badge-ghost badge-sm">ID: ${target.id}</span>
+                                                            ${isTargetMet ? '<span class="badge badge-success badge-sm animate-pulse">🎉 Hedef Gerçekleşti</span>' : ''}
+                                                        </div>
+                                                    </div>
                                                 </div>
                                             </div>
-                                            <div class="col-md-2">
-                                                <div class="text-center">
-                                                    <div class="fw-bold">₺${target.current_price.toFixed(2)}</div>
-                                                    <small>Mevcut Fiyat</small>
+                                            
+                                            <div class="flex flex-wrap gap-6 items-center">
+                                                <div class="text-center bg-base-200/50 rounded-xl p-4 min-w-[120px]">
+                                                    <div class="flex items-center justify-center gap-2 mb-2">
+                                                        <i class="fas ${conditionIcon} text-lg"></i>
+                                                        <span class="font-bold text-xl">₺${target.target_price.toFixed(2)}</span>
+                                                    </div>
+                                                    <div class="badge ${conditionBadge} badge-sm font-medium">${conditionText}</div>
                                                 </div>
-                                            </div>
-                                            <div class="col-md-2">
-                                                <button class="btn btn-danger btn-sm w-100" onclick="removeTarget(${target.id})">
-                                                    <i class="fas fa-trash"></i> Kaldır
+                                                
+                                                <div class="text-center bg-base-200/50 rounded-xl p-4 min-w-[120px]">
+                                                    <div class="font-bold text-2xl text-base-content mb-1">₺${target.current_price.toFixed(2)}</div>
+                                                    <div class="text-sm text-base-content/70 font-medium">Mevcut Fiyat</div>
+                                                </div>
+                                                
+                                                <div class="text-center bg-base-200/50 rounded-xl p-4 min-w-[140px]">
+                                                    <div class="text-sm font-semibold ${isTargetMet ? 'text-success animate-pulse' : 'text-info'}">${distanceText}</div>
+                                                </div>
+                                                
+                                                <button class="btn btn-error btn-sm hover:btn-error-focus transition-all duration-300 hover:scale-110 shadow-lg" onclick="removeTarget(${target.id})">
+                                                    <i class="fas fa-trash mr-1"></i>
+                                                    Kaldır
                                                 </button>
                                             </div>
                                         </div>
-                                        <div class="mt-2">
-                                            <small class="text-info">${distanceText}</small>
-                                        </div>
                                     </div>
                                 </div>
-                            `;
-                        });
-                        
-                        container.innerHTML = html;
-                    } else {
-                        container.innerHTML = `
-                            <div class="text-center text-muted py-4">
-                                <i class="fas fa-bullseye fa-3x mb-3"></i>
-                                <p>Henüz aktif fiyat hedefiniz bulunmuyor.</p>
                             </div>
                         `;
-                    }
-                })
-                .catch(error => {
-                    console.error('Fiyat hedefleri yüklenirken hata:', error);
-                });
-        }
-
-        function loadNotificationHistory() {
-            fetch('/api/notification_history')
-                .then(response => response.json())
-                .then(data => {
-                    const container = document.getElementById('notificationHistory');
+                    });
                     
-                    if (data.success && data.notifications && data.notifications.length > 0) {
-                        let html = '';
+                    html += '</div>';
+                    container.innerHTML = html;
+                } else {
+                    container.innerHTML = `
+                        <div class="text-center py-20">
+                            <div class="relative mb-8">
+                                <div class="w-32 h-32 mx-auto bg-gradient-to-br from-primary/20 to-secondary/20 rounded-full flex items-center justify-center mb-6">
+                                    <i class="fas fa-bullseye text-6xl text-primary/60"></i>
+                                </div>
+                                <div class="absolute inset-0 bg-gradient-to-r from-primary/10 to-secondary/10 rounded-full blur-2xl"></div>
+                            </div>
+                            <h3 class="text-2xl font-bold text-base-content mb-3">Henüz fiyat hedefiniz yok</h3>
+                            <p class="text-base-content/70 mb-8 text-lg max-w-md mx-auto">Yukarıdaki formu kullanarak ilk fiyat hedefinizi ekleyin ve ürün fiyatları hakkında bildirim almaya başlayın</p>
+                            <button onclick="document.getElementById('productUrl').focus()" class="btn btn-primary btn-lg bg-gradient-to-r from-primary to-secondary hover:from-primary-focus hover:to-secondary-focus border-0 shadow-xl hover:shadow-2xl transition-all duration-300 hover:scale-105">
+                                <i class="fas fa-plus mr-2"></i>
+                                <span class="font-semibold">İlk Hedefi Ekle</span>
+                            </button>
+                        </div>
+                    `;
+                }
+            })
+            .catch(error => {
+                console.error('Fiyat hedefleri yüklenirken hata:', error);
+                showToast('Fiyat hedefleri yüklenemedi', 'error');
+            });
+    }
+
+    function loadNotificationHistory() {
+        fetch('/api/notification_history')
+            .then(response => response.json())
+            .then(data => {
+                const container = document.getElementById('notificationHistory');
+                
+                if (data.success && data.notifications && data.notifications.length > 0) {
+                    let html = '<div class="space-y-3">';
+                    
+                    data.notifications.forEach(notification => {
+                        const typeIcons = {
+                            'price_target': 'fa-bullseye text-success',
+                            'price_drop': 'fa-arrow-down text-success',
+                            'price_increase': 'fa-arrow-up text-error',
+                            'daily_summary': 'fa-chart-bar text-info'
+                        };
                         
-                        data.notifications.forEach(notification => {
-                            const typeIcons = {
-                                'price_target': 'fa-bullseye text-success',
-                                'price_drop': 'fa-arrow-down text-success',
-                                'price_increase': 'fa-arrow-up text-danger',
-                                'daily_summary': 'fa-chart-bar text-info'
-                            };
-                            
-                            const icon = typeIcons[notification.notification_type] || 'fa-bell text-primary';
-                            const readClass = notification.is_read ? '' : 'unread';
-                            const readIcon = notification.is_read ? 'fa-envelope-open' : 'fa-envelope';
-                            
-                            const date = new Date(notification.sent_at).toLocaleDateString('tr-TR');
-                            const time = new Date(notification.sent_at).toLocaleTimeString('tr-TR');
-                            
-                            html += `
-                                <div class="card notification-card mb-2 ${readClass}">
-                                    <div class="card-body py-2">
-                                        <div class="row align-items-center">
-                                            <div class="col-md-1 text-center">
-                                                <i class="fas ${icon}"></i>
+                        const icon = typeIcons[notification.notification_type] || 'fa-bell text-primary';
+                        const readClass = notification.is_read ? 'bg-base-100' : 'bg-warning/10 border-l-4 border-warning';
+                        const readIcon = notification.is_read ? 'fa-envelope-open text-base-content/50' : 'fa-envelope text-warning';
+                        
+                        const date = new Date(notification.sent_at).toLocaleDateString('tr-TR');
+                        const time = new Date(notification.sent_at).toLocaleTimeString('tr-TR', {hour: '2-digit', minute: '2-digit'});
+                        
+                        html += `
+                            <div class="group relative">
+                                <div class="absolute -inset-1 bg-gradient-to-r ${notification.is_read ? 'from-base-300 to-base-300' : 'from-warning to-orange-500'} rounded-2xl blur opacity-${notification.is_read ? '10' : '30'} group-hover:opacity-40 transition duration-500"></div>
+                                <div class="relative card ${readClass} backdrop-blur-sm shadow-lg hover:shadow-xl transition-all duration-500 hover:scale-[1.01] border rounded-2xl overflow-hidden">
+                                    ${!notification.is_read ? '<div class="absolute top-0 left-0 w-1 h-full bg-gradient-to-b from-warning to-orange-500"></div>' : ''}
+                                    <div class="card-body p-6">
+                                        <div class="flex items-start gap-4">
+                                            <div class="flex-shrink-0">
+                                                <div class="w-12 h-12 bg-gradient-to-br from-primary/20 to-secondary/20 rounded-xl flex items-center justify-center">
+                                                    <i class="fas ${icon} text-xl"></i>
+                                                </div>
                                             </div>
-                                            <div class="col-md-8">
-                                                <div class="mb-1">${notification.message}</div>
-                                                <small class="text-muted">
-                                                    ${notification.product_name || 'Genel'} • ${date} ${time}
-                                                </small>
+                                            
+                                            <div class="flex-1 min-w-0">
+                                                <div class="font-semibold text-base-content mb-2 leading-relaxed">${notification.message}</div>
+                                                <div class="flex flex-wrap items-center gap-3 text-sm text-base-content/70">
+                                                    <span class="badge badge-ghost badge-sm font-medium">${notification.product_name || 'Genel'}</span>
+                                                    <span class="flex items-center gap-1">
+                                                        <i class="fas fa-clock text-xs"></i>
+                                                        ${date} ${time}
+                                                    </span>
+                                                </div>
                                             </div>
-                                            <div class="col-md-2 text-center">
-                                                <i class="fas ${readIcon} ${notification.is_read ? 'text-muted' : 'text-warning'}"></i>
-                                            </div>
-                                            <div class="col-md-1">
+                                            
+                                            <div class="flex items-center gap-3 flex-shrink-0">
+                                                <div class="tooltip" data-tip="${notification.is_read ? 'Okundu' : 'Okunmamış'}">
+                                                    <div class="w-8 h-8 rounded-full flex items-center justify-center ${notification.is_read ? 'bg-base-300' : 'bg-warning/20'}">
+                                                        <i class="fas ${readIcon} text-sm ${notification.is_read ? 'text-base-content/50' : 'text-warning'}"></i>
+                                                    </div>
+                                                </div>
+                                                
                                                 ${notification.product_url ? `
-                                                    <a href="${notification.product_url}" target="_blank" class="btn btn-sm btn-outline-primary">
-                                                        <i class="fas fa-external-link-alt"></i>
+                                                    <a href="${notification.product_url}" target="_blank" class="btn btn-sm btn-primary btn-outline hover:btn-primary transition-all duration-300 hover:scale-110 shadow-md">
+                                                        <i class="fas fa-external-link-alt mr-1"></i>
+                                                        Ürüne Git
                                                     </a>
                                                 ` : ''}
                                             </div>
                                         </div>
                                     </div>
                                 </div>
-                            `;
-                        });
-                        
-                        container.innerHTML = html;
-                    } else {
-                        container.innerHTML = `
-                            <div class="text-center text-muted py-4">
-                                <i class="fas fa-bell fa-3x mb-3"></i>
-                                <p>Henüz bildirim geçmişiniz bulunmuyor.</p>
                             </div>
                         `;
-                    }
-                })
-                .catch(error => {
-                    console.error('Bildirim geçmişi yüklenirken hata:', error);
-                });
-        }
+                    });
+                    
+                    html += '</div>';
+                    container.innerHTML = html;
+                } else {
+                    container.innerHTML = `
+                        <div class="text-center py-20">
+                            <div class="relative mb-8">
+                                <div class="w-32 h-32 mx-auto bg-gradient-to-br from-info/20 to-cyan-500/20 rounded-full flex items-center justify-center mb-6">
+                                    <i class="fas fa-bell text-6xl text-info/60"></i>
+                                </div>
+                                <div class="absolute inset-0 bg-gradient-to-r from-info/10 to-cyan-500/10 rounded-full blur-2xl"></div>
+                            </div>
+                            <h3 class="text-2xl font-bold text-base-content mb-3">Henüz bildiriminiz yok</h3>
+                            <p class="text-base-content/70 text-lg max-w-md mx-auto">Fiyat hedefleri eklediğinizde bildirimler burada görünecek ve geçmişinizi takip edebileceksiniz</p>
+                        </div>
+                    `;
+                }
+            })
+            .catch(error => {
+                console.error('Bildirim geçmişi yüklenirken hata:', error);
+                showToast('Bildirim geçmişi yüklenemedi', 'error');
+            });
+    }
 
-        function updateStats() {
-            // Bu fonksiyon gerçek API'den istatistikleri alacak
-            // Şimdilik örnek veriler
-            document.getElementById('totalNotifications').textContent = '0';
-            document.getElementById('unreadNotifications').textContent = '0';
-            document.getElementById('activeTargets').textContent = '0';
-            document.getElementById('todayAlerts').textContent = '0';
-        }
+    function updateStats() {
+        // İstatistikleri API'den al ve güncelle
+        Promise.all([
+            fetch('/api/price_targets').then(r => r.json()),
+            fetch('/api/notification_history').then(r => r.json())
+        ]).then(([targetsData, notificationsData]) => {
+            // Aktif hedefler
+            const activeTargets = targetsData.success ? (targetsData.targets?.length || 0) : 0;
+            document.getElementById('activeTargets').textContent = activeTargets;
+            document.getElementById('targetCount').textContent = activeTargets;
+            
+            if (notificationsData.success && notificationsData.notifications) {
+                const notifications = notificationsData.notifications;
+                
+                // Toplam bildirim
+                document.getElementById('totalNotifications').textContent = notifications.length;
+                document.getElementById('historyCount').textContent = notifications.length;
+                
+                // Okunmamış bildirimler
+                const unreadCount = notifications.filter(n => !n.is_read).length;
+                document.getElementById('unreadNotifications').textContent = unreadCount;
+                
+                // Bugünkü uyarılar
+                const today = new Date().toDateString();
+                const todayAlerts = notifications.filter(n => 
+                    new Date(n.sent_at).toDateString() === today
+                ).length;
+                document.getElementById('todayAlerts').textContent = todayAlerts;
+            }
+        }).catch(error => {
+            console.error('İstatistikler güncellenirken hata:', error);
+        });
+    }
 
-        // Fiyat hedefi ekleme
-        document.getElementById('addTargetForm').addEventListener('submit', function(e) {
-            e.preventDefault();
-            
-            const formData = {
-                product_url: document.getElementById('productUrl').value,
-                target_price: parseFloat(document.getElementById('targetPrice').value),
-                condition: document.getElementById('condition').value
-            };
-            
-            fetch('/api/add_price_target', {
+    // Fiyat hedefi ekleme
+    document.getElementById('addTargetForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        const submitBtn = e.target.querySelector('button[type="submit"]');
+        const originalText = submitBtn.innerHTML;
+        
+        // Loading durumu
+        submitBtn.innerHTML = '<span class="loading loading-spinner loading-sm mr-2"></span>Ekleniyor...';
+        submitBtn.disabled = true;
+        
+        const formData = {
+            product_url: document.getElementById('productUrl').value,
+            target_price: parseFloat(document.getElementById('targetPrice').value),
+            condition: document.getElementById('condition').value
+        };
+        
+        fetch('/api/add_price_target', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(formData)
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showToast('Fiyat hedefi başarıyla eklendi!', 'success');
+                document.getElementById('addTargetForm').reset();
+                loadNotificationData();
+            } else {
+                showToast('Hata: ' + (data.error || 'Bilinmeyen hata'), 'error');
+            }
+        })
+        .catch(error => {
+            console.error('Fiyat hedefi eklenirken hata:', error);
+            showToast('Fiyat hedefi eklenirken bir hata oluştu', 'error');
+        })
+        .finally(() => {
+            // Loading durumunu kaldır
+            submitBtn.innerHTML = originalText;
+            submitBtn.disabled = false;
+        });
+    });
+
+    function removeTarget(targetId) {
+        if (confirm('Bu fiyat hedefini kaldırmak istediğinizden emin misiniz?')) {
+            fetch('/api/remove_price_target', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
                 },
-                body: JSON.stringify(formData)
+                body: JSON.stringify({ target_id: targetId })
             })
             .then(response => response.json())
             .then(data => {
                 if (data.success) {
-                    alert('Fiyat hedefi başarıyla eklendi!');
-                    document.getElementById('addTargetForm').reset();
-                    loadPriceTargets();
+                    showToast('Fiyat hedefi kaldırıldı!', 'success');
+                    loadNotificationData();
                 } else {
-                    alert('Hata: ' + (data.error || 'Bilinmeyen hata'));
+                    showToast('Hata: ' + (data.error || 'Bilinmeyen hata'), 'error');
                 }
             })
             .catch(error => {
-                console.error('Fiyat hedefi eklenirken hata:', error);
-                alert('Fiyat hedefi eklenirken bir hata oluştu');
+                console.error('Fiyat hedefi kaldırılırken hata:', error);
+                showToast('Fiyat hedefi kaldırılırken bir hata oluştu', 'error');
             });
-        });
+        }
+    }
 
-        function removeTarget(targetId) {
-            if (confirm('Bu fiyat hedefini kaldırmak istediğinizden emin misiniz?')) {
-                fetch('/api/remove_price_target', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({ target_id: targetId })
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.success) {
-                        alert('Fiyat hedefi kaldırıldı!');
-                        loadPriceTargets();
-                    } else {
-                        alert('Hata: ' + (data.error || 'Bilinmeyen hata'));
-                    }
-                })
-                .catch(error => {
-                    console.error('Fiyat hedefi kaldırılırken hata:', error);
-                    alert('Fiyat hedefi kaldırılırken bir hata oluştu');
-                });
+    function markAllRead() {
+        fetch('/api/mark_notifications_read', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
             }
-        }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showToast('Tüm bildirimler okundu olarak işaretlendi!', 'success');
+                loadNotificationData();
+            } else {
+                showToast('Hata: ' + (data.error || 'Bilinmeyen hata'), 'error');
+            }
+        })
+        .catch(error => {
+            console.error('Bildirimler işaretlenirken hata:', error);
+            showToast('Bildirimler işaretlenirken bir hata oluştu', 'error');
+        });
+    }
 
-        function markAllRead() {
-            fetch('/api/mark_notifications_read', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                }
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    alert('Tüm bildirimler okundu olarak işaretlendi!');
-                    loadNotificationHistory();
-                } else {
-                    alert('Hata: ' + (data.error || 'Bilinmeyen hata'));
-                }
-            })
-            .catch(error => {
-                console.error('Bildirimler işaretlenirken hata:', error);
-                alert('Bildirimler işaretlenirken bir hata oluştu');
-            });
-        }
-    </script>
-</body>
-</html>
+    function showToast(message, type = 'info') {
+        const toastContainer = document.getElementById('toast-container');
+        const alertClass = {
+            'success': 'alert-success',
+            'error': 'alert-error',
+            'warning': 'alert-warning',
+            'info': 'alert-info'
+        }[type] || 'alert-info';
+        
+        const toast = document.createElement('div');
+        toast.className = `alert ${alertClass} mb-2`;
+        toast.innerHTML = `
+            <div class="flex items-center">
+                <i class="fas fa-${type === 'success' ? 'check' : type === 'error' ? 'times' : type === 'warning' ? 'exclamation' : 'info'}-circle mr-2"></i>
+                <span>${message}</span>
+            </div>
+        `;
+        
+        toastContainer.appendChild(toast);
+        
+        // 5 saniye sonra kaldır
+        setTimeout(() => {
+            toast.remove();
+        }, 5000);
+    }
+</script>
+{% endblock %}

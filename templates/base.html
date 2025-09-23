@@ -1,62 +1,444 @@
 <!DOCTYPE html>
 <html lang="tr" data-theme="dark">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}Trendyol Bot Dashboard{% endblock %}</title>
-    
+
     <!-- CSS Framework -->
     <link href="https://cdn.jsdelivr.net/npm/daisyui@4.4.19/dist/full.min.css" rel="stylesheet" type="text/css" />
     <script src="https://cdn.tailwindcss.com"></script>
-    
+
     <!-- Icons -->
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
-    
+
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"
+        rel="stylesheet">
+
     <!-- Socket.IO -->
     <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
-    
+
     <!-- Chart.js -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    
+
     <style>
-        /* Custom dark theme */
+        /* Custom Themes */
         [data-theme="dark"] {
             --primary: #ff6b35;
+            --primary-focus: #e55a2b;
+            --primary-content: #ffffff;
             --secondary: #4f46e5;
+            --secondary-focus: #4338ca;
+            --secondary-content: #ffffff;
             --accent: #06d6a0;
+            --accent-focus: #059669;
+            --accent-content: #ffffff;
             --neutral: #1f2937;
+            --neutral-focus: #111827;
+            --neutral-content: #d1d5db;
             --base-100: #111827;
             --base-200: #1f2937;
             --base-300: #374151;
+            --base-content: #f9fafb;
+            --info: #3abff8;
+            --success: #36d399;
+            --warning: #fbbd23;
+            --error: #f87272;
         }
-        
+
+        [data-theme="light"] {
+            --primary: #ff6b35;
+            --primary-focus: #e55a2b;
+            --primary-content: #ffffff;
+            --secondary: #4f46e5;
+            --secondary-focus: #4338ca;
+            --secondary-content: #ffffff;
+            --accent: #06d6a0;
+            --accent-focus: #059669;
+            --accent-content: #ffffff;
+            --neutral: #f3f4f6;
+            --neutral-focus: #e5e7eb;
+            --neutral-content: #1f2937;
+            --base-100: #ffffff;
+            --base-200: #f9fafb;
+            --base-300: #f3f4f6;
+            --base-content: #1f2937;
+            --info: #3abff8;
+            --success: #36d399;
+            --warning: #fbbd23;
+            --error: #f87272;
+        }
+
+        [data-theme="cyberpunk"] {
+            --primary: #ff0080;
+            --primary-focus: #d6006b;
+            --primary-content: #ffffff;
+            --secondary: #00ffff;
+            --secondary-focus: #00d9d9;
+            --secondary-content: #000000;
+            --accent: #ffff00;
+            --accent-focus: #d9d900;
+            --accent-content: #000000;
+            --neutral: #2a0845;
+            --neutral-focus: #1a0530;
+            --neutral-content: #ffffff;
+            --base-100: #0f0f23;
+            --base-200: #2a0845;
+            --base-300: #4c1d95;
+            --base-content: #ffffff;
+            --info: #00ffff;
+            --success: #00ff00;
+            --warning: #ffff00;
+            --error: #ff0080;
+        }
+
+        [data-theme="ocean"] {
+            --primary: #0ea5e9;
+            --primary-focus: #0284c7;
+            --primary-content: #ffffff;
+            --secondary: #06b6d4;
+            --secondary-focus: #0891b2;
+            --secondary-content: #ffffff;
+            --accent: #10b981;
+            --accent-focus: #059669;
+            --accent-content: #ffffff;
+            --neutral: #1e293b;
+            --neutral-focus: #0f172a;
+            --neutral-content: #f1f5f9;
+            --base-100: #0f172a;
+            --base-200: #1e293b;
+            --base-300: #334155;
+            --base-content: #f1f5f9;
+            --info: #0ea5e9;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --error: #ef4444;
+        }
+
+        [data-theme="sunset"] {
+            --primary: #f97316;
+            --primary-focus: #ea580c;
+            --primary-content: #ffffff;
+            --secondary: #ec4899;
+            --secondary-focus: #db2777;
+            --secondary-content: #ffffff;
+            --accent: #8b5cf6;
+            --accent-focus: #7c3aed;
+            --accent-content: #ffffff;
+            --neutral: #451a03;
+            --neutral-focus: #292524;
+            --neutral-content: #fef7ff;
+            --base-100: #292524;
+            --base-200: #451a03;
+            --base-300: #78716c;
+            --base-content: #fef7ff;
+            --info: #06b6d4;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --error: #ef4444;
+        }
+
+        [data-theme="light"] {
+            --primary: #ff6b35;
+            --primary-focus: #e55a2b;
+            --primary-content: #ffffff;
+            --secondary: #4f46e5;
+            --secondary-focus: #4338ca;
+            --secondary-content: #ffffff;
+            --accent: #06d6a0;
+            --accent-focus: #059669;
+            --accent-content: #ffffff;
+            --neutral: #f3f4f6;
+            --neutral-focus: #e5e7eb;
+            --neutral-content: #1f2937;
+            --base-100: #ffffff;
+            --base-200: #f9fafb;
+            --base-300: #f3f4f6;
+            --base-content: #1f2937;
+            --info: #3abff8;
+            --success: #36d399;
+            --warning: #fbbd23;
+            --error: #f87272;
+        }
+
+        [data-theme="cyberpunk"] {
+            --primary: #ff0080;
+            --primary-focus: #d6006b;
+            --primary-content: #ffffff;
+            --secondary: #00ffff;
+            --secondary-focus: #00d9d9;
+            --secondary-content: #000000;
+            --accent: #ffff00;
+            --accent-focus: #d9d900;
+            --accent-content: #000000;
+            --neutral: #2a0845;
+            --neutral-focus: #1a0530;
+            --neutral-content: #ffffff;
+            --base-100: #0f0f23;
+            --base-200: #2a0845;
+            --base-300: #4c1d95;
+            --base-content: #ffffff;
+            --info: #00ffff;
+            --success: #00ff00;
+            --warning: #ffff00;
+            --error: #ff0080;
+        }
+
+        [data-theme="ocean"] {
+            --primary: #0ea5e9;
+            --primary-focus: #0284c7;
+            --primary-content: #ffffff;
+            --secondary: #06b6d4;
+            --secondary-focus: #0891b2;
+            --secondary-content: #ffffff;
+            --accent: #10b981;
+            --accent-focus: #059669;
+            --accent-content: #ffffff;
+            --neutral: #1e293b;
+            --neutral-focus: #0f172a;
+            --neutral-content: #f1f5f9;
+            --base-100: #0f172a;
+            --base-200: #1e293b;
+            --base-300: #334155;
+            --base-content: #f1f5f9;
+            --info: #0ea5e9;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --error: #ef4444;
+        }
+
+        [data-theme="sunset"] {
+            --primary: #f97316;
+            --primary-focus: #ea580c;
+            --primary-content: #ffffff;
+            --secondary: #ec4899;
+            --secondary-focus: #db2777;
+            --secondary-content: #ffffff;
+            --accent: #8b5cf6;
+            --accent-focus: #7c3aed;
+            --accent-content: #ffffff;
+            --neutral: #451a03;
+            --neutral-focus: #292524;
+            --neutral-content: #fef7ff;
+            --base-100: #292524;
+            --base-200: #451a03;
+            --base-300: #78716c;
+            --base-content: #fef7ff;
+            --info: #06b6d4;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --error: #ef4444;
+        }
+
+        /* Global Styles */
+        * {
+            transition: all 0.2s ease-in-out;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--base-100);
+            color: var(--base-content);
+        }
+
+        /* Gradient Backgrounds */
         .gradient-bg {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
         }
-        
+
+        .gradient-bg-accent {
+            background: linear-gradient(135deg, var(--accent) 0%, var(--primary) 100%);
+        }
+
+        .gradient-bg-neutral {
+            background: linear-gradient(135deg, var(--neutral) 0%, var(--base-300) 100%);
+        }
+
+        /* Card Animations */
         .card-hover {
-            transition: all 0.3s ease;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            cursor: pointer;
         }
-        
+
         .card-hover:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+            transform: translateY(-4px) scale(1.02);
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
         }
-        
-        .sidebar {
-            background: linear-gradient(180deg, #1f2937 0%, #111827 100%);
+
+        /* Button Enhancements */
+        .btn {
+            transition: all 0.2s ease-in-out;
+            border-radius: 0.75rem;
         }
-        
+
+        .btn:hover {
+            transform: translateY(-1px);
+        }
+
+        /* Status Indicators */
         .status-online {
             animation: pulse 2s infinite;
         }
-        
+
+        .status-beta {
+            background: linear-gradient(45deg, var(--warning), var(--accent));
+            color: var(--base-100);
+            font-weight: bold;
+            animation: glow 2s ease-in-out infinite alternate;
+        }
+
         @keyframes pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.5; }
+
+            0%,
+            100% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0.5;
+            }
+        }
+
+        @keyframes glow {
+            from {
+                box-shadow: 0 0 5px var(--warning);
+            }
+
+            to {
+                box-shadow: 0 0 20px var(--accent), 0 0 30px var(--accent);
+            }
+        }
+
+        /* Navigation Enhancements */
+        .navbar {
+            backdrop-filter: blur(10px);
+            background: rgba(var(--base-200), 0.8);
+            border-bottom: 1px solid var(--base-300);
+        }
+
+        .navbar .btn-ghost:hover {
+            background: var(--base-300);
+        }
+
+        /* Menu Active State */
+        .menu li>a.active {
+            background: var(--primary);
+            color: var(--primary-content);
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: var(--base-200);
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: var(--primary);
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--primary-focus);
+        }
+
+        /* Loading States */
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+        }
+
+        /* Toast Enhancements */
+        .toast {
+            z-index: 10000;
+        }
+
+        .alert {
+            border-radius: 0.75rem;
+            backdrop-filter: blur(10px);
+        }
+
+        /* Table Enhancements */
+        .table {
+            border-radius: 0.75rem;
+            overflow: hidden;
+        }
+
+        .table th {
+            background: var(--base-200);
+            color: var(--base-content);
+            font-weight: 600;
+        }
+
+        .table tr:hover {
+            background: var(--base-200);
+        }
+
+        /* Form Enhancements */
+        .form-control .input,
+        .form-control .select,
+        .form-control .textarea {
+            border-radius: 0.75rem;
+            border: 2px solid var(--base-300);
+            transition: all 0.2s ease-in-out;
+        }
+
+        .form-control .input:focus,
+        .form-control .select:focus,
+        .form-control .textarea:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(var(--primary), 0.1);
+        }
+
+        /* Badge Enhancements */
+        .badge {
+            border-radius: 0.5rem;
+            font-weight: 500;
+        }
+
+        /* Stats Cards */
+        .stat {
+            padding: 1.5rem;
+            border-radius: 1rem;
+            background: var(--base-200);
+        }
+
+        .stat-value {
+            font-weight: 700;
+            color: var(--primary);
+        }
+
+        /* Footer */
+        .footer {
+            background: var(--base-200);
+            border-top: 1px solid var(--base-300);
+        }
+
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            .card-hover:hover {
+                transform: none;
+            }
+
+            .container {
+                padding: 1rem;
+            }
         }
     </style>
 </head>
+
 <body class="bg-base-100 text-base-content">
     <!-- Navigation -->
     <div class="navbar bg-base-200 shadow-lg">
@@ -65,59 +447,151 @@
                 <div tabindex="0" role="button" class="btn btn-ghost lg:hidden">
                     <i class="fas fa-bars text-xl"></i>
                 </div>
-                <ul tabindex="0" class="menu menu-sm dropdown-content mt-3 z-[1] p-2 shadow bg-base-100 rounded-box w-52">
-                    <li><a href="/"><i class="fas fa-home"></i> Dashboard</a></li>
-                    <li><a href="/products"><i class="fas fa-box"></i> Ürünler</a></li>
-                    <li><a href="/add_product"><i class="fas fa-plus"></i> Ürün Ekle</a></li>
-                    <li><a href="/analytics"><i class="fas fa-chart-bar"></i> Analitik</a></li>
-                    <li><a href="/notifications"><i class="fas fa-bell"></i> Bildirimler</a></li>
-                    <li><a href="/settings"><i class="fas fa-cog"></i> Ayarlar</a></li>
+                <ul tabindex="0"
+                    class="menu menu-sm dropdown-content mt-3 z-[1] p-2 shadow bg-base-100 rounded-box w-64">
+                    <li class="menu-title">
+                        <span><i class="fas fa-bars"></i> Menü</span>
+                    </li>
+                    <li><a href="/" class="{% if request.endpoint == 'index' %}active{% endif %}">
+                            <i class="fas fa-home"></i> Dashboard
+                        </a></li>
+                    <li><a href="/products" class="{% if request.endpoint == 'products' %}active{% endif %}">
+                            <i class="fas fa-box"></i> Ürünler
+                        </a></li>
+                    <li><a href="/add_product" class="{% if request.endpoint == 'add_product_page' %}active{% endif %}">
+                            <i class="fas fa-plus"></i> Ürün Ekle
+                        </a></li>
+                    <li><a href="/analytics" class="{% if request.endpoint == 'analytics' %}active{% endif %}">
+                            <i class="fas fa-chart-bar"></i> Analitik
+                        </a></li>
+                    <li><a href="/notifications" class="{% if request.endpoint == 'notifications' %}active{% endif %}">
+                            <i class="fas fa-bell"></i> Bildirimler
+                        </a></li>
+                    <li><a href="/monitoring" class="{% if request.endpoint == 'monitoring_page' %}active{% endif %}">
+                            <i class="fas fa-search"></i> Site Monitoring
+                        </a></li>
+                    <li><a href="/settings" class="{% if request.endpoint == 'settings' %}active{% endif %}">
+                            <i class="fas fa-cog"></i> Ayarlar
+                        </a></li>
+                    <div class="divider"></div>
+                    <li class="menu-title">
+                        <span><i class="fas fa-palette"></i> Tema</span>
+                    </li>
+                    <li><a onclick="setTheme('dark')"><i class="fas fa-moon"></i> Karanlık</a></li>
+                    <li><a onclick="setTheme('light')"><i class="fas fa-sun"></i> Aydınlık</a></li>
+                    <li><a onclick="setTheme('cyberpunk')"><i class="fas fa-robot"></i> Cyberpunk</a></li>
                 </ul>
             </div>
             <a class="btn btn-ghost text-xl">
                 <i class="fas fa-robot text-primary"></i>
                 Trendyol Bot
+                <span class="badge status-beta ml-2 text-xs">(Beta)</span>
             </a>
         </div>
-        
+
         <div class="navbar-center hidden lg:flex">
             <ul class="menu menu-horizontal px-1">
                 <li><a href="/" class="{% if request.endpoint == 'index' %}active{% endif %}">
-                    <i class="fas fa-home"></i> Dashboard
-                </a></li>
+                        <i class="fas fa-home"></i> Dashboard
+                    </a></li>
                 <li><a href="/products" class="{% if request.endpoint == 'products' %}active{% endif %}">
-                    <i class="fas fa-box"></i> Ürünler
-                </a></li>
+                        <i class="fas fa-box"></i> Ürünler
+                    </a></li>
                 <li><a href="/add_product" class="{% if request.endpoint == 'add_product_page' %}active{% endif %}">
-                    <i class="fas fa-plus"></i> Ürün Ekle
-                </a></li>
+                        <i class="fas fa-plus"></i> Ürün Ekle
+                    </a></li>
                 <li><a href="/analytics" class="{% if request.endpoint == 'analytics' %}active{% endif %}">
-                    <i class="fas fa-chart-bar"></i> Analitik
-                </a></li>
+                        <i class="fas fa-chart-bar"></i> Analitik
+                    </a></li>
                 <li><a href="/notifications" class="{% if request.endpoint == 'notifications' %}active{% endif %}">
-                    <i class="fas fa-bell"></i> Bildirimler
-                </a></li>
+                        <i class="fas fa-bell"></i> Bildirimler
+                    </a></li>
+                <li><a href="/monitoring" class="{% if request.endpoint == 'monitoring_page' %}active{% endif %}">
+                        <i class="fas fa-search"></i> Site Monitoring
+                    </a></li>
                 <li><a href="/settings" class="{% if request.endpoint == 'settings' %}active{% endif %}">
-                    <i class="fas fa-cog"></i> Ayarlar
-                </a></li>
+                        <i class="fas fa-cog"></i> Ayarlar
+                    </a></li>
             </ul>
         </div>
-        
+
         <div class="navbar-end">
             <!-- Theme Toggle -->
-            <div class="dropdown dropdown-end">
-                <div tabindex="0" role="button" class="btn btn-ghost">
-                    <i class="fas fa-palette"></i>
+            <div class="dropdown dropdown-end mr-2">
+                <div tabindex="0" role="button" class="btn btn-ghost btn-circle">
+                    <i class="fas fa-palette text-lg"></i>
                 </div>
-                <ul tabindex="0" class="dropdown-content z-[1] menu p-2 shadow bg-base-100 rounded-box w-52">
-                    <li><a onclick="setTheme('dark')"><i class="fas fa-moon"></i> Dark</a></li>
-                    <li><a onclick="setTheme('light')"><i class="fas fa-sun"></i> Light</a></li>
-                    <li><a onclick="setTheme('cyberpunk')"><i class="fas fa-robot"></i> Cyberpunk</a></li>
+                <ul tabindex="0" class="dropdown-content z-[1] menu p-2 shadow bg-base-100 rounded-box w-64">
+                    <li class="menu-title">
+                        <span><i class="fas fa-brush"></i> Tema Seçimi</span>
+                    </li>
+                    <li><a onclick="setTheme('dark')" class="theme-option" data-theme="dark">
+                            <i class="fas fa-moon text-blue-400"></i>
+                            <span>Dark Mode</span>
+                            <div class="ml-auto flex gap-1">
+                                <div class="w-3 h-3 rounded-full bg-gray-800"></div>
+                                <div class="w-3 h-3 rounded-full bg-orange-500"></div>
+                            </div>
+                        </a></li>
+                    <li><a onclick="setTheme('light')" class="theme-option" data-theme="light">
+                            <i class="fas fa-sun text-yellow-400"></i>
+                            <span>Light Mode</span>
+                            <div class="ml-auto flex gap-1">
+                                <div class="w-3 h-3 rounded-full bg-white border"></div>
+                                <div class="w-3 h-3 rounded-full bg-orange-500"></div>
+                            </div>
+                        </a></li>
+                    <li><a onclick="setTheme('cyberpunk')" class="theme-option" data-theme="cyberpunk">
+                            <i class="fas fa-robot text-pink-400"></i>
+                            <span>Cyberpunk</span>
+                            <div class="ml-auto flex gap-1">
+                                <div class="w-3 h-3 rounded-full bg-purple-900"></div>
+                                <div class="w-3 h-3 rounded-full bg-pink-500"></div>
+                            </div>
+                        </a></li>
+                    <li><a onclick="setTheme('ocean')" class="theme-option" data-theme="ocean">
+                            <i class="fas fa-water text-blue-400"></i>
+                            <span>Ocean</span>
+                            <div class="ml-auto flex gap-1">
+                                <div class="w-3 h-3 rounded-full bg-slate-900"></div>
+                                <div class="w-3 h-3 rounded-full bg-blue-500"></div>
+                            </div>
+                        </a></li>
+                    <li><a onclick="setTheme('sunset')" class="theme-option" data-theme="sunset">
+                            <i class="fas fa-sun text-orange-400"></i>
+                            <span>Sunset</span>
+                            <div class="ml-auto flex gap-1">
+                                <div class="w-3 h-3 rounded-full bg-orange-900"></div>
+                                <div class="w-3 h-3 rounded-full bg-orange-500"></div>
+                            </div>
+                        </a></li>
+                    <li><a onclick="setTheme('ocean')" class="theme-option" data-theme="ocean">
+                            <i class="fas fa-water text-blue-400"></i>
+                            <span>Ocean Blue</span>
+                            <div class="ml-auto flex gap-1">
+                                <div class="w-3 h-3 rounded-full bg-slate-900"></div>
+                                <div class="w-3 h-3 rounded-full bg-blue-500"></div>
+                            </div>
+                        </a></li>
+                    <li><a onclick="setTheme('sunset')" class="theme-option" data-theme="sunset">
+                            <i class="fas fa-mountain text-orange-400"></i>
+                            <span>Sunset</span>
+                            <div class="ml-auto flex gap-1">
+                                <div class="w-3 h-3 rounded-full bg-stone-800"></div>
+                                <div class="w-3 h-3 rounded-full bg-orange-500"></div>
+                            </div>
+                        </a></li>
                 </ul>
             </div>
-            
+
+            <!-- Beta Badge -->
+            <div class="badge status-beta gap-2 mr-2">
+                <i class="fas fa-flask text-xs"></i>
+                Beta
+            </div>
+
             <!-- Status -->
-            <div class="badge badge-success gap-2 mr-4">
+            <div class="badge badge-success gap-2">
                 <div class="w-2 h-2 bg-success rounded-full status-online"></div>
                 Online
             </div>
@@ -147,7 +621,11 @@
             </div>
         </nav>
         <aside>
-            <p>© 2024 Trendyol Bot Dashboard - Tüm hakları saklıdır.</p>
+            <p>© 2024 Trendyol Bot Dashboard <span class="badge status-beta mx-2">(Beta)</span> - Tüm hakları saklıdır.
+            </p>
+            <p class="text-sm opacity-70 mt-2">
+                <i class="fas fa-code"></i> Geliştirici sürümü - Sürekli güncellenmektedir
+            </p>
         </aside>
     </footer>
 
@@ -160,25 +638,62 @@
         function setTheme(theme) {
             document.documentElement.setAttribute('data-theme', theme);
             localStorage.setItem('theme', theme);
-            showToast(`Tema ${theme} olarak değiştirildi`, 'success');
+
+            // Update active theme indicator
+            updateActiveTheme(theme);
+
+            // Show theme change notification
+            const themeNames = {
+                'dark': 'Karanlık Mod',
+                'light': 'Aydınlık Mod',
+                'cyberpunk': 'Cyberpunk',
+                'ocean': 'Okyanus Mavisi',
+                'sunset': 'Gün Batımı'
+            };
+
+            showToast(`Tema ${themeNames[theme]} olarak değiştirildi`, 'success');
+
+            // Add smooth transition effect
+            document.body.style.transition = 'all 0.3s ease-in-out';
+            setTimeout(() => {
+                document.body.style.transition = '';
+            }, 300);
+        }
+
+        function updateActiveTheme(currentTheme) {
+            // Remove active class from all theme options
+            document.querySelectorAll('.theme-option').forEach(option => {
+                option.classList.remove('active');
+            });
+
+            // Add active class to current theme
+            const activeOption = document.querySelector(`[data-theme="${currentTheme}"]`);
+            if (activeOption) {
+                activeOption.classList.add('active');
+            }
         }
 
         // Load saved theme
         const savedTheme = localStorage.getItem('theme') || 'dark';
         document.documentElement.setAttribute('data-theme', savedTheme);
 
+        // Initialize theme on page load
+        document.addEventListener('DOMContentLoaded', function () {
+            updateActiveTheme(savedTheme);
+        });
+
         // Toast Notifications
         function showToast(message, type = 'info') {
             const toastContainer = document.getElementById('toast-container');
             const toast = document.createElement('div');
-            
+
             const typeClasses = {
                 'success': 'alert-success',
                 'error': 'alert-error',
                 'warning': 'alert-warning',
                 'info': 'alert-info'
             };
-            
+
             toast.className = `alert ${typeClasses[type]} shadow-lg mb-2`;
             toast.innerHTML = `
                 <div>
@@ -186,9 +701,9 @@
                     <span>${message}</span>
                 </div>
             `;
-            
+
             toastContainer.appendChild(toast);
-            
+
             // Auto remove after 3 seconds
             setTimeout(() => {
                 toast.remove();
@@ -197,20 +712,20 @@
 
         // Socket.IO Connection
         const socket = io();
-        
-        socket.on('connect', function() {
+
+        socket.on('connect', function () {
             console.log('WebSocket bağlantısı kuruldu');
         });
-        
-        socket.on('product_added', function(data) {
+
+        socket.on('product_added', function (data) {
             showToast(`Yeni ürün eklendi: ${data.product.name}`, 'success');
             // Refresh page if on products page
             if (window.location.pathname === '/products') {
                 setTimeout(() => location.reload(), 1000);
             }
         });
-        
-        socket.on('product_deleted', function(data) {
+
+        socket.on('product_deleted', function (data) {
             showToast('Ürün silindi', 'info');
             // Remove product from DOM if exists
             const productElement = document.querySelector(`[data-product-id="${data.product_id}"]`);
@@ -218,8 +733,8 @@
                 productElement.remove();
             }
         });
-        
-        socket.on('price_updated', function(data) {
+
+        socket.on('price_updated', function (data) {
             showToast('Fiyat güncellendi', 'success');
             // Update price in DOM if exists
             const priceElement = document.querySelector(`[data-product-id="${data.product_id}"] .price`);
@@ -227,8 +742,8 @@
                 priceElement.textContent = `${data.new_price} TL`;
             }
         });
-        
-        socket.on('status_update', function(data) {
+
+        socket.on('status_update', function (data) {
             // Update status indicators
             const statusElements = document.querySelectorAll('.bot-status');
             statusElements.forEach(el => {
@@ -263,4 +778,5 @@
 
     {% block scripts %}{% endblock %}
 </body>
+
 </html>

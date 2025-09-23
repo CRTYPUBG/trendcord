@@ -30,3 +30,7 @@ TRENDYOL_URL_PATTERNS = [
     r'https?://tyml\.gl/[a-zA-Z0-9]+',            # Milla kısaltılmış link
     r'https?://(www\.)?trendyol\.com/sr\?.*pi=(\d+)',  # Arama linki
 ]
+
+# Global Admin IDs (from environment or default)
+import os
+GLOBAL_ADMIN_IDS = os.getenv('GLOBAL_ADMIN_IDS', '992809942383870002,831185933117423656').split(',')

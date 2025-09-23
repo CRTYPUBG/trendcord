@@ -88,6 +88,14 @@ python main.py
 - `/fiyat_guncelle` - Fiyat güncelleme
 - `/sil` - Ürün silme
 
+### 🔍 Site Monitoring Sistemi
+- ✅ **Otomatik Site İzleme** - 2 günde bir Trendyol yapısını kontrol eder
+- ✅ **Değişiklik Tespit** - JSON-LD, selektörler, API endpoint değişiklikleri
+- ✅ **Global Admin Bildirimi** - DM ile anında bilgilendirme
+- ✅ **Web UI Entegrasyonu** - Görsel monitoring dashboard'u
+- ✅ **Manuel Kontrol** - `!monitoring_check` komutu ile test
+- ✅ **Güncelleme Önerileri** - Otomatik aksiyon önerileri
+
 ## 📈 Gelecek Geliştirmeler
 
 ### Kısa Vadeli:

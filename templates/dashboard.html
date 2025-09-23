@@ -137,7 +137,7 @@
                                     </td>
                                     <td>
                                         <div class="flex space-x-2">
-                                            <button class="btn btn-sm btn-primary" onclick="viewProduct('{{ product.product_id }}')">
+                                            <button class="btn btn-sm btn-primary" onclick="viewProduct('{{ product.url }}')">
                                                 <i class="fas fa-eye"></i>
                                             </button>
                                             <button class="btn btn-sm btn-error" onclick="deleteProduct('{{ product.product_id }}')">
@@ -281,9 +281,13 @@
 {% block scripts %}
 <script>
     // Dashboard specific functions
-    function viewProduct(productId) {
-        // Redirect to product detail or open modal
-        window.open(`https://www.trendyol.com/sr?q=&pi=${productId}`, '_blank');
+    function viewProduct(productUrl) {
+        // Ürün URL'sini direkt kullan
+        if (productUrl && productUrl.startsWith('http')) {
+            window.open(productUrl, '_blank');
+        } else {
+            showToast('Geçersiz ürün URL\'si', 'error');
+        }
     }
 
     function deleteProduct(productId) {
@@ -301,6 +305,23 @@
             .then(data => {
                 if (data.success) {
                     showToast('Ürün başarıyla silindi', 'success');
+                    
+                    // Remove product from DOM
+                    const productRow = document.querySelector(`tr[data-product-id="${productId}"]`);
+                    if (productRow) {
+                        productRow.remove();
+                    }
+                    
+                    // Refresh stats after deletion
+                    setTimeout(() => {
+                        fetch('/api/stats')
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.success) {
+                                updateDashboardStats(data);
+                            }
+                        });
+                    }, 1000);
                 } else {
                     showToast('Ürün silinemedi: ' + data.error, 'error');
                 }
@@ -355,14 +376,43 @@
     }
 
     // WebSocket status monitoring
-    socket.on('connect', function() {
-        document.getElementById('websocket-status').textContent = 'Bağlı';
-        document.getElementById('websocket-status').className = 'badge badge-success';
-    });
+    document.addEventListener('DOMContentLoaded', function() {
+        // WebSocket bağlantısı base.html'de tanımlandı
+        if (typeof socket !== 'undefined') {
+            socket.on('connect', function() {
+                const wsStatus = document.getElementById('websocket-status');
+                if (wsStatus) {
+                    wsStatus.textContent = 'Bağlı';
+                    wsStatus.className = 'badge badge-success';
+                }
+            });
 
-    socket.on('disconnect', function() {
-        document.getElementById('websocket-status').textContent = 'Bağlantı Kesildi';
-        document.getElementById('websocket-status').className = 'badge badge-error';
+            socket.on('disconnect', function() {
+                const wsStatus = document.getElementById('websocket-status');
+                if (wsStatus) {
+                    wsStatus.textContent = 'Bağlantı Kesildi';
+                    wsStatus.className = 'badge badge-error';
+                }
+            });
+            
+            // Real-time updates
+            socket.on('product_deleted', function(data) {
+                const productRow = document.querySelector(`tr[data-product-id="${data.product_id}"]`);
+                if (productRow) {
+                    productRow.remove();
+                }
+                // Refresh stats
+                setTimeout(() => {
+                    fetch('/api/stats')
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            updateDashboardStats(data);
+                        }
+                    });
+                }, 500);
+            });
+        }
     });
 
     // Auto refresh stats every 30 seconds
@@ -372,15 +422,48 @@
         .then(data => {
             if (data.success) {
                 // Update stats without page reload
-                const totalProducts = document.querySelector('.card-body h2.card-title');
-                if (totalProducts) {
-                    totalProducts.textContent = data.total_products;
-                }
+                updateDashboardStats(data);
             }
         })
         .catch(error => {
             console.log('Stats update failed:', error);
         });
     }, 30000);
+
+    function updateDashboardStats(data) {
+        // Update total products
+        const totalProductsCards = document.querySelectorAll('.card-body h2.card-title');
+        if (totalProductsCards[0]) {
+            totalProductsCards[0].textContent = data.total_products;
+        }
+        
+        // Update total guilds
+        if (totalProductsCards[1]) {
+            totalProductsCards[1].textContent = data.total_guilds;
+        }
+        
+        // Update admin count
+        if (totalProductsCards[3]) {
+            totalProductsCards[3].textContent = data.admin_count;
+        }
+        
+        // Update bot status
+        const botStatusBadge = document.querySelector('.badge');
+        if (botStatusBadge && data.bot_status) {
+            if (data.bot_status.running) {
+                botStatusBadge.textContent = 'Çalışıyor';
+                botStatusBadge.className = 'badge badge-success';
+            } else {
+                botStatusBadge.textContent = 'Durdu';
+                botStatusBadge.className = 'badge badge-warning';
+            }
+        }
+        
+        // Update last check time
+        const lastCheckElement = document.querySelector('.bot-status');
+        if (lastCheckElement && data.bot_status && data.bot_status.last_check) {
+            lastCheckElement.textContent = data.bot_status.last_check.substring(0, 16);
+        }
+    }
 </script>
 {% endblock %}

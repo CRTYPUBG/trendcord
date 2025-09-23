@@ -1,0 +1,13 @@
+{
+  "json_ld_present": true,
+  "price_selectors": [
+    "price[\"\\']?\\s*:\\s*[\"\\']?(\\d+[.,]\\d+)"
+  ],
+  "title_selectors": [],
+  "image_selectors": [],
+  "api_endpoints": [
+    "https://api.trendyol.com/webapi/products/"
+  ],
+  "page_structure_hash": "887e77fbb44295f49d7338513e0ed41f",
+  "last_check": "2025-09-23T18:00:09.948796"
+}
