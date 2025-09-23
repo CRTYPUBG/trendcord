@@ -74,22 +74,33 @@ def index():
             'guild_stats': []
         }
         
-        # Genel istatistikler
-        all_stats = db.get_all_guilds_stats()
-        stats['total_guilds'] = len(all_stats)
-        stats['total_products'] = sum(stat['product_count'] for stat in all_stats)
-        stats['guild_stats'] = all_stats[:10]  # İlk 10 sunucu
-        
-        # Son eklenen ürünler
-        recent_products = db.get_all_products(is_admin=True)
-        stats['recent_products'] = recent_products[:10]  # Son 10 ürün
+        try:
+            # Genel istatistikler
+            all_stats = db.get_all_guilds_stats()
+            stats['total_guilds'] = len(all_stats) if all_stats else 0
+            stats['total_products'] = sum(stat['product_count'] for stat in all_stats) if all_stats else 0
+            stats['guild_stats'] = all_stats[:10] if all_stats else []  # İlk 10 sunucu
+            
+            # Son eklenen ürünler
+            recent_products = db.get_all_products(is_admin=True)
+            stats['recent_products'] = recent_products[:10] if recent_products else []  # Son 10 ürün
+        except Exception as e:
+            logger.error(f"İstatistik hesaplama hatası: {e}")
+            # Varsayılan değerler zaten ayarlandı
         
         db.close()
+        
+        # Admin sayısını güvenli şekilde al
+        try:
+            admin_count = len(admin_manager.get_global_admin_list())
+        except Exception as e:
+            logger.error(f"Admin sayısı alınırken hata: {e}")
+            admin_count = 0
         
         return render_template('dashboard.html', 
                              stats=stats, 
                              bot_status=bot_status,
-                             admin_count=len(admin_manager.get_global_admin_list()))
+                             admin_count=admin_count)
     except Exception as e:
         logger.error(f"Dashboard yüklenirken hata: {e}")
         return render_template('error.html', error=str(e))
@@ -262,6 +273,88 @@ def api_stats():
         
     except Exception as e:
         logger.error(f"İstatistik API hatası: {e}")
+        return jsonify({'success': False, 'error': str(e)})
+
+# Global admin yönetimi için API
+@app.route('/api/add_global_admin', methods=['POST'])
+def api_add_global_admin():
+    """API: Global admin ekleme"""
+    try:
+        data = request.get_json()
+        admin_id = data.get('admin_id')
+        
+        if not admin_id:
+            return jsonify({'success': False, 'error': 'Admin ID gerekli'})
+        
+        from admin_utils import admin_manager
+        success = admin_manager.add_global_admin(admin_id)
+        
+        if success:
+            return jsonify({'success': True, 'message': 'Global admin eklendi'})
+        else:
+            return jsonify({'success': False, 'error': 'Admin eklenemedi'})
+            
+    except Exception as e:
+        logger.error(f"Global admin ekleme hatası: {e}")
+        return jsonify({'success': False, 'error': str(e)})
+
+@app.route('/api/remove_global_admin', methods=['POST'])
+def api_remove_global_admin():
+    """API: Global admin kaldırma"""
+    try:
+        data = request.get_json()
+        admin_id = data.get('admin_id')
+        
+        if not admin_id:
+            return jsonify({'success': False, 'error': 'Admin ID gerekli'})
+        
+        from admin_utils import admin_manager
+        success = admin_manager.remove_global_admin(admin_id)
+        
+        if success:
+            return jsonify({'success': True, 'message': 'Global admin kaldırıldı'})
+        else:
+            return jsonify({'success': False, 'error': 'Admin kaldırılamadı'})
+            
+    except Exception as e:
+        logger.error(f"Global admin kaldırma hatası: {e}")
+        return jsonify({'success': False, 'error': str(e)})
+
+@app.route('/api/list_global_admins')
+def api_list_global_admins():
+    """API: Global admin listesi"""
+    try:
+        from admin_utils import admin_manager
+        admins = admin_manager.get_global_admin_list()
+        
+        return jsonify({'success': True, 'admins': admins})
+        
+    except Exception as e:
+        logger.error(f"Global admin listesi hatası: {e}")
+        return jsonify({'success': False, 'error': str(e)})
+
+# Bot durumu API
+@app.route('/api/bot_status')
+def api_bot_status():
+    """API: Bot durumu"""
+    try:
+        # Bot durumunu kontrol et (basit bir ping)
+        status = {
+            'running': True,
+            'last_check': datetime.now().isoformat(),
+            'total_products': 0
+        }
+        
+        # Veritabanından ürün sayısını al
+        db = get_db()
+        guild_stats = db.get_all_guilds_stats()
+        status['total_products'] = sum(stat['product_count'] for stat in guild_stats) if guild_stats else 0
+        db.close()
+        
+        return jsonify({'success': True, 'status': status})
+        
+    except Exception as e:
+        logger.error(f"Bot durumu API hatası: {e}")
         return jsonify({'success': False, 'error': str(e)})
 
 # Analitik sayfası

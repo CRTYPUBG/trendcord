@@ -1,12 +1,9 @@
-<!DOCTYPE html>
-<html lang="tr">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Analitik - Trendyol Bot</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+{% extends "base.html" %}
+
+{% block title %}Analitik - Trendyol Bot{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-8">
     <style>
         .trend-up { color: #dc3545; }
         .trend-down { color: #198754; }
@@ -15,218 +12,214 @@
         .alert-card { border-left: 4px solid #ffc107; }
         .stats-card { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; }
     </style>
-</head>
-<body class="bg-light">
-    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
-        <div class="container">
-            <a class="navbar-brand" href="/">
-                <i class="fas fa-chart-line me-2"></i>Trendyol Bot - Analitik
-            </a>
-            <div class="navbar-nav ms-auto">
-                <a class="nav-link" href="/"><i class="fas fa-home"></i> Ana Sayfa</a>
-                <a class="nav-link" href="/products"><i class="fas fa-box"></i> Ürünler</a>
-                <a class="nav-link active" href="/analytics"><i class="fas fa-chart-bar"></i> Analitik</a>
-            </div>
-        </div>
-    </nav>
-
-    <div class="container mt-4">
+    <!-- Page Header -->
+    <div class="mb-8">
+        <h1 class="text-3xl font-bold text-base-content">
+            <i class="fas fa-chart-line mr-3 text-primary"></i>Analitik Dashboard
+        </h1>
+        <p class="text-base-content/70 mt-2">Fiyat trendleri, fırsatlar ve detaylı analizler</p>
+    </div>
+    <!-- Sunucu Seçimi ve İstatistikler -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
         <!-- Sunucu Seçimi -->
-        <div class="row mb-4">
-            <div class="col-md-6">
-                <div class="card">
-                    <div class="card-body">
-                        <h5 class="card-title"><i class="fas fa-server me-2"></i>Sunucu Seçimi</h5>
-                        <select class="form-select" id="guildSelect" onchange="changeGuild()">
-                            <option value="">Tüm Sunucular</option>
-                            {% for guild in all_guild_stats %}
-                            <option value="{{ guild.guild_id }}" {% if guild.guild_id == current_guild %}selected{% endif %}>
-                                Sunucu {{ guild.guild_id }} ({{ guild.product_count }} ürün)
-                            </option>
-                            {% endfor %}
-                        </select>
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-6">
-                <div class="card stats-card">
-                    <div class="card-body text-center">
-                        <h5 class="card-title"><i class="fas fa-chart-pie me-2"></i>Seçili Sunucu İstatistikleri</h5>
-                        {% if guild_stats %}
-                        <div class="row">
-                            <div class="col-4">
-                                <h3>{{ guild_stats.total_products }}</h3>
-                                <small>Toplam Ürün</small>
-                            </div>
-                            <div class="col-4">
-                                <h3>₺{{ "%.2f"|format(guild_stats.average_price) }}</h3>
-                                <small>Ortalama Fiyat</small>
-                            </div>
-                            <div class="col-4">
-                                <h3>{{ guild_stats.products_added_today }}</h3>
-                                <small>Bugün Eklenen</small>
-                            </div>
-                        </div>
-                        {% else %}
-                        <p class="mb-0">Sunucu seçin veya veri bulunmuyor</p>
-                        {% endif %}
-                    </div>
-                </div>
+        <div class="card bg-base-200 shadow-lg">
+            <div class="card-body">
+                <h2 class="card-title text-lg">
+                    <i class="fas fa-server text-primary"></i>
+                    Sunucu Seçimi
+                </h2>
+                <select class="select select-bordered w-full" id="guildSelect" onchange="changeGuild()">
+                    <option value="">Tüm Sunucular</option>
+                    {% for guild in all_guild_stats %}
+                    <option value="{{ guild.guild_id }}" {% if guild.guild_id == current_guild %}selected{% endif %}>
+                        Sunucu {{ guild.guild_id }} ({{ guild.product_count }} ürün)
+                    </option>
+                    {% endfor %}
+                </select>
             </div>
         </div>
 
-        <!-- En İyi Fırsatlar -->
-        <div class="row mb-4">
-            <div class="col-12">
-                <div class="card">
-                    <div class="card-header bg-success text-white">
-                        <h5 class="mb-0"><i class="fas fa-fire me-2"></i>En İyi Fırsatlar (Son 7 Gün)</h5>
+        <!-- İstatistikler -->
+        <div class="card bg-gradient-to-r from-primary to-secondary text-primary-content shadow-lg">
+            <div class="card-body text-center">
+                <h2 class="card-title justify-center text-lg mb-4">
+                    <i class="fas fa-chart-pie"></i>
+                    Seçili Sunucu İstatistikleri
+                </h2>
+                {% if guild_stats %}
+                <div class="grid grid-cols-3 gap-4">
+                    <div class="stat">
+                        <div class="stat-value text-2xl">{{ guild_stats.total_products }}</div>
+                        <div class="stat-desc text-primary-content/70">Toplam Ürün</div>
                     </div>
-                    <div class="card-body">
-                        {% if deals %}
-                        <div class="row">
-                            {% for deal in deals %}
-                            <div class="col-md-6 col-lg-4 mb-3">
-                                <div class="card deal-card h-100">
-                                    <div class="card-body">
-                                        <h6 class="card-title">{{ deal.name[:40] }}{% if deal.name|length > 40 %}...{% endif %}</h6>
-                                        <div class="mb-2">
-                                            <span class="text-decoration-line-through text-muted">₺{{ "%.2f"|format(deal.old_price) }}</span>
-                                            <span class="fw-bold text-success ms-2">₺{{ "%.2f"|format(deal.current_price) }}</span>
-                                        </div>
-                                        <div class="mb-2">
-                                            <span class="badge bg-success">%{{ "%.1f"|format(deal.discount_percentage) }} İndirim</span>
-                                            <span class="badge bg-info ms-1">₺{{ "%.2f"|format(deal.savings) }} Tasarruf</span>
-                                        </div>
-                                        <a href="{{ deal.url }}" target="_blank" class="btn btn-sm btn-outline-primary">
-                                            <i class="fas fa-external-link-alt"></i> Ürüne Git
-                                        </a>
-                                    </div>
-                                </div>
-                            </div>
-                            {% endfor %}
-                        </div>
-                        {% else %}
-                        <div class="text-center text-muted py-4">
-                            <i class="fas fa-shopping-cart fa-3x mb-3"></i>
-                            <p>Şu anda aktif fırsat bulunmuyor.</p>
-                        </div>
-                        {% endif %}
+                    <div class="stat">
+                        <div class="stat-value text-2xl">₺{{ "%.2f"|format(guild_stats.average_price) }}</div>
+                        <div class="stat-desc text-primary-content/70">Ortalama Fiyat</div>
+                    </div>
+                    <div class="stat">
+                        <div class="stat-value text-2xl">{{ guild_stats.products_added_today }}</div>
+                        <div class="stat-desc text-primary-content/70">Bugün Eklenen</div>
                     </div>
                 </div>
+                {% else %}
+                <p class="text-primary-content/70">Sunucu seçin veya veri bulunmuyor</p>
+                {% endif %}
             </div>
         </div>
+    </div>
 
-        <!-- Fiyat Uyarıları -->
-        <div class="row mb-4">
-            <div class="col-12">
-                <div class="card">
-                    <div class="card-header bg-warning text-dark">
-                        <h5 class="mb-0"><i class="fas fa-exclamation-triangle me-2"></i>Fiyat Uyarıları (%10+ Değişim)</h5>
-                    </div>
+    <!-- En İyi Fırsatlar -->
+    <div class="card bg-base-200 shadow-lg mb-8">
+        <div class="card-header bg-success text-success-content">
+            <h2 class="card-title text-lg">
+                <i class="fas fa-fire"></i>
+                En İyi Fırsatlar (Son 7 Gün)
+            </h2>
+        </div>
+        <div class="card-body">
+            {% if deals %}
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {% for deal in deals %}
+                <div class="card bg-base-100 shadow-md border-l-4 border-success">
                     <div class="card-body">
-                        {% if alerts %}
-                        <div class="row">
-                            {% for alert in alerts %}
-                            <div class="col-md-6 mb-3">
-                                <div class="card alert-card">
-                                    <div class="card-body">
-                                        <h6 class="card-title">{{ alert.name[:40] }}{% if alert.name|length > 40 %}...{% endif %}</h6>
-                                        <div class="mb-2">
-                                            <span class="text-muted">₺{{ "%.2f"|format(alert.previous_price) }}</span>
-                                            <i class="fas fa-arrow-right mx-2"></i>
-                                            <span class="fw-bold">₺{{ "%.2f"|format(alert.current_price) }}</span>
-                                        </div>
-                                        <div class="mb-2">
-                                            {% if alert.alert_type == 'increase' %}
-                                            <span class="badge bg-danger">
-                                                <i class="fas fa-arrow-up"></i> +%{{ "%.1f"|format(alert.change_percentage) }}
-                                            </span>
-                                            {% else %}
-                                            <span class="badge bg-success">
-                                                <i class="fas fa-arrow-down"></i> %{{ "%.1f"|format(alert.change_percentage) }}
-                                            </span>
-                                            {% endif %}
-                                            <span class="badge bg-secondary ms-1">₺{{ "%.2f"|format(alert.change_amount|abs) }}</span>
-                                        </div>
-                                        <a href="{{ alert.url }}" target="_blank" class="btn btn-sm btn-outline-primary">
-                                            <i class="fas fa-external-link-alt"></i> Ürüne Git
-                                        </a>
-                                    </div>
-                                </div>
-                            </div>
-                            {% endfor %}
+                        <h3 class="card-title text-sm">{{ deal.name[:40] }}{% if deal.name|length > 40 %}...{% endif %}</h3>
+                        <div class="mb-2">
+                            <span class="line-through text-base-content/50">₺{{ "%.2f"|format(deal.old_price) }}</span>
+                            <span class="font-bold text-success ml-2">₺{{ "%.2f"|format(deal.current_price) }}</span>
                         </div>
-                        {% else %}
-                        <div class="text-center text-muted py-4">
-                            <i class="fas fa-bell fa-3x mb-3"></i>
-                            <p>Şu anda önemli fiyat değişikliği bulunmuyor.</p>
+                        <div class="flex gap-2 mb-3">
+                            <span class="badge badge-success">%{{ "%.1f"|format(deal.discount_percentage) }} İndirim</span>
+                            <span class="badge badge-info">₺{{ "%.2f"|format(deal.savings) }} Tasarruf</span>
                         </div>
-                        {% endif %}
+                        <a href="{{ deal.url }}" target="_blank" class="btn btn-outline btn-primary btn-sm">
+                            <i class="fas fa-external-link-alt"></i> Ürüne Git
+                        </a>
                     </div>
                 </div>
+                {% endfor %}
             </div>
+            {% else %}
+            <div class="text-center py-8">
+                <i class="fas fa-shopping-cart text-4xl text-base-content/30 mb-4"></i>
+                <p class="text-base-content/70">Şu anda aktif fırsat bulunmuyor.</p>
+            </div>
+            {% endif %}
         </div>
+    </div>
 
-        <!-- Trend Grafiği -->
-        <div class="row mb-4">
-            <div class="col-12">
-                <div class="card">
-                    <div class="card-header bg-info text-white">
-                        <h5 class="mb-0"><i class="fas fa-chart-line me-2"></i>Fiyat Trend Analizi</h5>
-                    </div>
+    <!-- Fiyat Uyarıları -->
+    <div class="card bg-base-200 shadow-lg mb-8">
+        <div class="card-header bg-warning text-warning-content">
+            <h2 class="card-title text-lg">
+                <i class="fas fa-exclamation-triangle"></i>
+                Fiyat Uyarıları (%10+ Değişim)
+            </h2>
+        </div>
+        <div class="card-body">
+            {% if alerts %}
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {% for alert in alerts %}
+                <div class="card bg-base-100 shadow-md border-l-4 border-warning">
                     <div class="card-body">
-                        <div class="mb-3">
-                            <label for="productSelect" class="form-label">Ürün Seçin:</label>
-                            <select class="form-select" id="productSelect" onchange="loadProductTrend()">
-                                <option value="">Ürün seçin...</option>
-                            </select>
+                        <h3 class="card-title text-sm">{{ alert.name[:40] }}{% if alert.name|length > 40 %}...{% endif %}</h3>
+                        <div class="flex items-center gap-2 mb-2">
+                            <span class="text-base-content/70">₺{{ "%.2f"|format(alert.previous_price) }}</span>
+                            <i class="fas fa-arrow-right text-base-content/50"></i>
+                            <span class="font-bold">₺{{ "%.2f"|format(alert.current_price) }}</span>
                         </div>
-                        <div id="trendChart" style="display: none;">
-                            <canvas id="priceChart" width="400" height="200"></canvas>
+                        <div class="flex gap-2 mb-3">
+                            {% if alert.alert_type == 'increase' %}
+                            <span class="badge badge-error">
+                                <i class="fas fa-arrow-up"></i> +%{{ "%.1f"|format(alert.change_percentage) }}
+                            </span>
+                            {% else %}
+                            <span class="badge badge-success">
+                                <i class="fas fa-arrow-down"></i> %{{ "%.1f"|format(alert.change_percentage) }}
+                            </span>
+                            {% endif %}
+                            <span class="badge badge-neutral">₺{{ "%.2f"|format(alert.change_amount|abs) }}</span>
                         </div>
-                        <div id="trendInfo" class="mt-3" style="display: none;">
-                            <div class="row">
-                                <div class="col-md-2">
-                                    <div class="text-center">
-                                        <h6>Trend</h6>
-                                        <span id="trendDirection" class="badge"></span>
-                                    </div>
-                                </div>
-                                <div class="col-md-2">
-                                    <div class="text-center">
-                                        <h6>Değişim</h6>
-                                        <span id="trendChange"></span>
-                                    </div>
-                                </div>
-                                <div class="col-md-2">
-                                    <div class="text-center">
-                                        <h6>Ortalama</h6>
-                                        <span id="trendAverage"></span>
-                                    </div>
-                                </div>
-                                <div class="col-md-3">
-                                    <div class="text-center">
-                                        <h6>En Düşük</h6>
-                                        <span id="trendMin"></span>
-                                    </div>
-                                </div>
-                                <div class="col-md-3">
-                                    <div class="text-center">
-                                        <h6>En Yüksek</h6>
-                                        <span id="trendMax"></span>
-                                    </div>
-                                </div>
-                            </div>
+                        <a href="{{ alert.url }}" target="_blank" class="btn btn-outline btn-primary btn-sm">
+                            <i class="fas fa-external-link-alt"></i> Ürüne Git
+                        </a>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="text-center py-8">
+                <i class="fas fa-bell text-4xl text-base-content/30 mb-4"></i>
+                <p class="text-base-content/70">Şu anda önemli fiyat değişikliği bulunmuyor.</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Trend Grafiği -->
+    <div class="card bg-base-200 shadow-lg mb-8">
+        <div class="card-header bg-info text-info-content">
+            <h2 class="card-title text-lg">
+                <i class="fas fa-chart-line"></i>
+                Fiyat Trend Analizi
+            </h2>
+        </div>
+        <div class="card-body">
+            <div class="mb-6">
+                <label for="productSelect" class="label">
+                    <span class="label-text font-semibold">Ürün Seçin:</span>
+                </label>
+                <select class="select select-bordered w-full" id="productSelect" onchange="loadProductTrend()">
+                    <option value="">Ürün seçin...</option>
+                </select>
+            </div>
+            
+            <div id="trendChart" style="display: none;" class="mb-6">
+                <canvas id="priceChart" class="w-full h-64"></canvas>
+            </div>
+            
+            <div id="trendInfo" class="mt-6" style="display: none;">
+                <div class="grid grid-cols-2 md:grid-cols-5 gap-4">
+                    <div class="stat bg-base-100 rounded-lg p-4 text-center">
+                        <div class="stat-title text-sm">Trend</div>
+                        <div class="stat-value text-lg">
+                            <span id="trendDirection" class="badge"></span>
+                        </div>
+                    </div>
+                    <div class="stat bg-base-100 rounded-lg p-4 text-center">
+                        <div class="stat-title text-sm">Değişim</div>
+                        <div class="stat-value text-lg">
+                            <span id="trendChange"></span>
+                        </div>
+                    </div>
+                    <div class="stat bg-base-100 rounded-lg p-4 text-center">
+                        <div class="stat-title text-sm">Ortalama</div>
+                        <div class="stat-value text-lg">
+                            <span id="trendAverage"></span>
+                        </div>
+                    </div>
+                    <div class="stat bg-base-100 rounded-lg p-4 text-center">
+                        <div class="stat-title text-sm">En Düşük</div>
+                        <div class="stat-value text-lg">
+                            <span id="trendMin"></span>
+                        </div>
+                    </div>
+                    <div class="stat bg-base-100 rounded-lg p-4 text-center">
+                        <div class="stat-title text-sm">En Yüksek</div>
+                        <div class="stat-value text-lg">
+                            <span id="trendMax"></span>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
     </div>
+</div>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
-    <script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+{% endblock %}
+
+{% block scripts %}
+<script>
         let priceChart = null;
 
         function changeGuild() {
@@ -253,16 +246,25 @@
                     const select = document.getElementById('productSelect');
                     select.innerHTML = '<option value="">Ürün seçin...</option>';
                     
-                    if (data.success && data.products) {
+                    if (data.success && data.products && data.products.length > 0) {
                         data.products.forEach(product => {
                             const option = document.createElement('option');
                             option.value = product.product_id;
-                            option.textContent = product.name.substring(0, 50) + (product.name.length > 50 ? '...' : '');
+                            option.textContent = (product.name || 'İsimsiz Ürün').substring(0, 50) + (product.name && product.name.length > 50 ? '...' : '');
                             select.appendChild(option);
                         });
+                    } else {
+                        const option = document.createElement('option');
+                        option.value = '';
+                        option.textContent = 'Ürün bulunamadı';
+                        select.appendChild(option);
                     }
                 })
-                .catch(error => console.error('Ürünler yüklenirken hata:', error));
+                .catch(error => {
+                    console.error('Ürünler yüklenirken hata:', error);
+                    const select = document.getElementById('productSelect');
+                    select.innerHTML = '<option value="">Hata: Ürünler yüklenemedi</option>';
+                });
         }
 
         function loadProductTrend() {
@@ -273,19 +275,33 @@
                 return;
             }
 
+            // Loading göster
+            const chartDiv = document.getElementById('trendChart');
+            chartDiv.style.display = 'block';
+            chartDiv.innerHTML = '<div class="text-center py-8"><span class="loading loading-spinner loading-lg"></span><p class="mt-2">Trend verisi yükleniyor...</p></div>';
+
             fetch(`/api/product_trend/${productId}?days=30`)
-                .then(response => response.json())
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                    }
+                    return response.json();
+                })
                 .then(data => {
                     if (data.success && data.trend) {
+                        // Canvas'ı geri yükle
+                        chartDiv.innerHTML = '<canvas id="priceChart" class="w-full h-64"></canvas>';
                         displayTrendChart(data.trend);
                         displayTrendInfo(data.trend);
                     } else {
-                        alert('Trend verisi yüklenemedi: ' + (data.error || 'Bilinmeyen hata'));
+                        chartDiv.innerHTML = '<div class="alert alert-error"><span>Trend verisi yüklenemedi: ' + (data.error || 'Bilinmeyen hata') + '</span></div>';
+                        document.getElementById('trendInfo').style.display = 'none';
                     }
                 })
                 .catch(error => {
                     console.error('Trend verisi yüklenirken hata:', error);
-                    alert('Trend verisi yüklenirken hata oluştu');
+                    chartDiv.innerHTML = '<div class="alert alert-error"><span>Trend verisi yüklenirken hata oluştu: ' + error.message + '</span></div>';
+                    document.getElementById('trendInfo').style.display = 'none';
                 });
         }
 
@@ -378,6 +394,5 @@
         document.addEventListener('DOMContentLoaded', function() {
             loadProducts();
         });
-    </script>
-</body>
-</html>
+</script>
+{% endblock %}
