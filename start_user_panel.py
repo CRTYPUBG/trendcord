@@ -14,12 +14,15 @@ from dotenv import load_dotenv
 # .env dosyasını yükle
 load_dotenv()
 
-# Logging ayarları
+# Logs klasörünü oluştur
+os.makedirs('logs', exist_ok=True)
+
+# Logging ayarları (UTF-8 encoding ile)
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     handlers=[
-        logging.FileHandler('logs/user_panel.log'),
+        logging.FileHandler('logs/user_panel.log', encoding='utf-8'),
         logging.StreamHandler(sys.stdout)
     ]
 )
@@ -49,8 +52,8 @@ def check_requirements():
             missing_packages.append(package)
     
     if missing_packages:
-        logger.error(f"Eksik kütüphaneler: {', '.join(missing_packages)}")
-        logger.error("Lütfen 'pip install -r requirements.txt' komutunu çalıştırın")
+        logger.error(f"Missing packages: {', '.join(missing_packages)}")
+        logger.error("Please run 'pip install -r requirements.txt'")
         return False
     
     return True
@@ -86,7 +89,7 @@ def create_directories():
     for directory in directories:
         try:
             os.makedirs(directory, exist_ok=True)
-            logger.info(f"Klasör oluşturuldu/kontrol edildi: {directory}")
+            logger.info(f"Directory created/checked: {directory}")
         except Exception as e:
             logger.error(f"Klasör oluşturma hatası ({directory}): {e}")
             return False
@@ -96,21 +99,21 @@ def create_directories():
 def main():
     """Ana fonksiyon"""
     logger.info("=" * 50)
-    logger.info("Trendyol Bot - Kullanıcı Paneli Başlatılıyor")
+    logger.info("Trendyol Bot - User Panel Starting")
     logger.info("=" * 50)
     
     # Gereksinimler kontrolü
-    logger.info("Gereksinimler kontrol ediliyor...")
+    logger.info("Checking requirements...")
     if not check_requirements():
         sys.exit(1)
     
     # Çevre değişkenleri kontrolü
-    logger.info("Çevre değişkenleri kontrol ediliyor...")
+    logger.info("Checking environment variables...")
     if not check_environment():
         sys.exit(1)
     
     # Klasörler oluştur
-    logger.info("Klasörler oluşturuluyor...")
+    logger.info("Creating directories...")
     if not create_directories():
         sys.exit(1)
     
@@ -135,7 +138,7 @@ def main():
     except KeyboardInterrupt:
         logger.info("Kullanıcı tarafından durduruldu")
     except Exception as e:
-        logger.error(f"Kullanıcı paneli başlatma hatası: {e}")
+        logger.error(f"User panel startup error: {e}")
         sys.exit(1)
 
 if __name__ == '__main__':

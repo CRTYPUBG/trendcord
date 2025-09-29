@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard - Trendyol Bot</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        body {
+            background: #f8f9fa;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        .navbar {
+            background: linear-gradient(45deg, #ff6b6b, #ee5a24) !important;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .navbar-brand, .navbar-nav .nav-link {
+            color: white !important;
+        }
+        .stat-card {
+            background: white;
+            border-radius: 15px;
+            padding: 1.5rem;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.08);
+            border: none;
+            transition: transform 0.3s ease;
+        }
+        .stat-card:hover {
+            transform: translateY(-5px);
+        }
+        .stat-icon {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            color: white;
+        }
+        .stat-icon.products { background: linear-gradient(45deg, #4facfe, #00f2fe); }
+        .stat-icon.guilds { background: linear-gradient(45deg, #43e97b, #38f9d7); }
+        .stat-icon.users { background: linear-gradient(45deg, #fa709a, #fee140); }
+        .stat-icon.status { background: linear-gradient(45deg, #a8edea, #fed6e3); }
+        
+        .recent-products {
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.08);
+        }
+        .product-item {
+            border-bottom: 1px solid #f1f3f4;
+            padding: 1rem;
+        }
+        .product-item:last-child {
+            border-bottom: none;
+        }
+        .guild-stats {
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.08);
+        }
+        .status-badge {
+            padding: 0.5rem 1rem;
+            border-radius: 20px;
+            font-size: 0.875rem;
+            font-weight: 600;
+        }
+        .status-online { background: #d4edda; color: #155724; }
+        .status-offline { background: #f8d7da; color: #721c24; }
+    </style>
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar navbar-expand-lg navbar-dark">
+        <div class="container">
+            <a class="navbar-brand" href="/admin/dashboard">
+                <i class="fas fa-user-shield"></i> Admin Panel
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav me-auto">
+                    <li class="nav-item">
+                        <a class="nav-link active" href="/admin/dashboard">
+                            <i class="fas fa-tachometer-alt"></i> Dashboard
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/products">
+                            <i class="fas fa-box"></i> Ürünler
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/analytics">
+                            <i class="fas fa-chart-bar"></i> Analitik
+                        </a>
+                    </li>
+                </ul>
+                <ul class="navbar-nav">
+                    <li class="nav-item">
+                        <a class="nav-link" href="/logout">
+                            <i class="fas fa-sign-out-alt"></i> Çıkış
+                        </a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mt-4">
+        <!-- Page Header -->
+        <div class="row mb-4">
+            <div class="col">
+                <h1 class="h3 mb-0">Admin Dashboard</h1>
+                <p class="text-muted">Sistem genel durumu ve istatistikler</p>
+            </div>
+        </div>
+
+        <!-- Statistics Cards -->
+        <div class="row mb-4">
+            <div class="col-md-3 mb-3">
+                <div class="stat-card">
+                    <div class="d-flex align-items-center">
+                        <div class="stat-icon products">
+                            <i class="fas fa-box"></i>
+                        </div>
+                        <div class="ms-3">
+                            <h3 class="mb-0">{{ stats.total_products }}</h3>
+                            <p class="text-muted mb-0">Toplam Ürün</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3 mb-3">
+                <div class="stat-card">
+                    <div class="d-flex align-items-center">
+                        <div class="stat-icon guilds">
+                            <i class="fas fa-server"></i>
+                        </div>
+                        <div class="ms-3">
+                            <h3 class="mb-0">{{ stats.total_guilds }}</h3>
+                            <p class="text-muted mb-0">Aktif Sunucu</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3 mb-3">
+                <div class="stat-card">
+                    <div class="d-flex align-items-center">
+                        <div class="stat-icon users">
+                            <i class="fas fa-users"></i>
+                        </div>
+                        <div class="ms-3">
+                            <h3 class="mb-0">{{ stats.total_users }}</h3>
+                            <p class="text-muted mb-0">Kayıtlı Kullanıcı</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3 mb-3">
+                <div class="stat-card">
+                    <div class="d-flex align-items-center">
+                        <div class="stat-icon status">
+                            <i class="fas fa-heartbeat"></i>
+                        </div>
+                        <div class="ms-3">
+                            <span class="status-badge {{ 'status-online' if bot_status.running else 'status-offline' }}">
+                                {{ 'Çevrimiçi' if bot_status.running else 'Çevrimdışı' }}
+                            </span>
+                            <p class="text-muted mb-0 mt-1">Bot Durumu</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <!-- Recent Products -->
+            <div class="col-md-8 mb-4">
+                <div class="recent-products">
+                    <div class="p-3 border-bottom">
+                        <h5 class="mb-0">
+                            <i class="fas fa-clock"></i> Son Eklenen Ürünler
+                        </h5>
+                    </div>
+                    <div class="p-0">
+                        {% if stats.recent_products %}
+                            {% for product in stats.recent_products %}
+                            <div class="product-item">
+                                <div class="d-flex align-items-center">
+                                    <img src="{{ product.image_url or '/static/img/no-image.png' }}" 
+                                         alt="Ürün" 
+                                         class="rounded me-3" 
+                                         style="width: 50px; height: 50px; object-fit: cover;">
+                                    <div class="flex-grow-1">
+                                        <h6 class="mb-1">{{ product.name[:50] }}...</h6>
+                                        <small class="text-muted">
+                                            <i class="fas fa-server"></i> {{ product.guild_id }}
+                                        </small>
+                                    </div>
+                                    <div class="text-end">
+                                        <span class="fw-bold text-success">{{ product.current_price }} ₺</span>
+                                        {% if product.original_price and product.original_price != product.current_price %}
+                                        <br><small class="text-muted text-decoration-line-through">{{ product.original_price }} ₺</small>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        {% else %}
+                            <div class="p-4 text-center text-muted">
+                                <i class="fas fa-inbox fa-2x mb-2"></i>
+                                <p>Henüz ürün eklenmemiş</p>
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Guild Statistics -->
+            <div class="col-md-4 mb-4">
+                <div class="guild-stats">
+                    <div class="p-3 border-bottom">
+                        <h5 class="mb-0">
+                            <i class="fas fa-chart-pie"></i> Sunucu İstatistikleri
+                        </h5>
+                    </div>
+                    <div class="p-3">
+                        {% if stats.guild_stats %}
+                            {% for guild in stats.guild_stats %}
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <div>
+                                    <small class="fw-bold">{{ guild.guild_name or guild.guild_id }}</small>
+                                </div>
+                                <span class="badge bg-primary">{{ guild.product_count }}</span>
+                            </div>
+                            {% endfor %}
+                        {% else %}
+                            <div class="text-center text-muted">
+                                <i class="fas fa-server fa-2x mb-2"></i>
+                                <p>Henüz sunucu yok</p>
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Quick Actions -->
+        <div class="row">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0">
+                            <i class="fas fa-bolt"></i> Hızlı İşlemler
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-3 mb-2">
+                                <a href="/products" class="btn btn-outline-primary w-100">
+                                    <i class="fas fa-box"></i> Tüm Ürünler
+                                </a>
+                            </div>
+                            <div class="col-md-3 mb-2">
+                                <button class="btn btn-outline-success w-100" onclick="refreshStats()">
+                                    <i class="fas fa-sync"></i> İstatistikleri Yenile
+                                </button>
+                            </div>
+                            <div class="col-md-3 mb-2">
+                                <a href="/analytics" class="btn btn-outline-info w-100">
+                                    <i class="fas fa-chart-bar"></i> Detaylı Analiz
+                                </a>
+                            </div>
+                            <div class="col-md-3 mb-2">
+                                <button class="btn btn-outline-warning w-100" onclick="exportData()">
+                                    <i class="fas fa-download"></i> Veri Dışa Aktar
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Flash Messages -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            <div class="position-fixed top-0 end-0 p-3" style="z-index: 1050;">
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ 'danger' if category == 'error' else category }} alert-dismissible fade show" role="alert">
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
+                {% endfor %}
+            </div>
+        {% endif %}
+    {% endwith %}
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        function refreshStats() {
+            location.reload();
+        }
+
+        function exportData() {
+            alert('Veri dışa aktarma özelliği yakında eklenecek!');
+        }
+
+        // Auto refresh every 30 seconds
+        setInterval(function() {
+            fetch('/api/stats')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        // Update stats without full page reload
+                        console.log('Stats updated:', data);
+                    }
+                })
+                .catch(error => console.error('Stats update error:', error));
+        }, 30000);
+    </script>
+</body>
+</html>

@@ -1,4 +1,36 @@
-<!DOCTYPE html>
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+Web Admin Mobil Düzeltme Scripti
+Otomatik olarak web admin panelindeki mobil görünüm sorunlarını düzeltir
+"""
+
+import os
+import re
+import shutil
+from datetime import datetime
+
+def backup_file(file_path):
+    """Dosyayı yedekle"""
+    if os.path.exists(file_path):
+        backup_path = f"{file_path}.backup_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+        shutil.copy2(file_path, backup_path)
+        print(f"✅ Yedek oluşturuldu: {backup_path}")
+        return backup_path
+    return None
+
+def fix_base_template():
+    """Base template'i mobil uyumlu hale getir"""
+    template_path = "templates/base.html"
+    
+    if not os.path.exists(template_path):
+        print(f"❌ {template_path} bulunamadı")
+        return False
+    
+    backup_file(template_path)
+    
+    # Mobil uyumlu base template
+    mobile_base_content = '''<!DOCTYPE html>
 <html lang="tr">
 <head>
     <meta charset="UTF-8">
@@ -352,4 +384,46 @@
     </script>
     {% block extra_js %}{% endblock %}
 </body>
-</html>
+</html>'''
+    
+    with open(template_path, 'w', encoding='utf-8') as f:
+        f.write(mobile_base_content)
+    
+    print(f"✅ {template_path} mobil uyumlu hale getirildi")
+    return True
+
+def main():
+    """Ana düzeltme fonksiyonu"""
+    print("🚀 Web Admin Mobil Düzeltme Scripti Başlatılıyor...")
+    print("=" * 50)
+    
+    # Templates klasörünü kontrol et
+    if not os.path.exists("templates"):
+        os.makedirs("templates")
+        print("✅ Templates klasörü oluşturuldu")
+    
+    success_count = 0
+    total_fixes = 1
+    
+    # Base template düzelt
+    if fix_base_template():
+        success_count += 1
+    
+    print("=" * 50)
+    print(f"✅ Düzeltme tamamlandı: {success_count}/{total_fixes} başarılı")
+    
+    if success_count == total_fixes:
+        print("🎉 Mobil düzeltmeler başarıyla uygulandı!")
+        print("\n📱 Mobil iyileştirmeler:")
+        print("- Responsive tasarım")
+        print("- Touch-friendly butonlar")
+        print("- Mobil menü")
+        print("- Kaydırılabilir tablolar")
+        print("- Optimized form layouts")
+    else:
+        print("⚠️  Bazı düzeltmeler başarısız oldu. Lütfen hataları kontrol edin.")
+    
+    print("\n🔄 Web sunucusunu yeniden başlatmayı unutmayın!")
+
+if __name__ == "__main__":
+    main()

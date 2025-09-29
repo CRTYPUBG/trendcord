@@ -3,141 +3,132 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard - {{ user.username }}</title>
+    <title>Kullanıcı Paneli - Trendyol Bot</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
-    <link href="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.css" rel="stylesheet">
     <style>
         body {
-            background-color: #f8f9fa;
+            background: #f8f9fa;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
         }
-        .navbar-brand {
-            font-weight: bold;
+        .navbar {
+            background: linear-gradient(45deg, #5865f2, #7289da) !important;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
         }
-        .stat-card {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
+        .navbar-brand, .navbar-nav .nav-link {
+            color: white !important;
+        }
+        .user-info {
+            background: white;
             border-radius: 15px;
             padding: 1.5rem;
-            margin-bottom: 1rem;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.08);
+            margin-bottom: 2rem;
+        }
+        .user-avatar {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            border: 3px solid #5865f2;
+        }
+        .stat-card {
+            background: white;
+            border-radius: 15px;
+            padding: 1.5rem;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.08);
+            border: none;
             transition: transform 0.3s ease;
         }
         .stat-card:hover {
             transform: translateY(-5px);
         }
-        .stat-card .stat-number {
-            font-size: 2rem;
-            font-weight: bold;
+        .stat-icon {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+            color: white;
         }
-        .stat-card .stat-label {
-            opacity: 0.9;
-            font-size: 0.9rem;
-        }
-        .card {
-            border: none;
-            border-radius: 15px;
-            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.08);
-            margin-bottom: 1.5rem;
-        }
-        .card-header {
+        .stat-icon.products { background: linear-gradient(45deg, #4facfe, #00f2fe); }
+        .stat-icon.guilds { background: linear-gradient(45deg, #43e97b, #38f9d7); }
+        
+        .guild-card {
             background: white;
-            border-bottom: 1px solid #eee;
-            border-radius: 15px 15px 0 0 !important;
-            padding: 1rem 1.5rem;
+            border-radius: 15px;
+            padding: 1rem;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.08);
+            margin-bottom: 1rem;
+            transition: transform 0.3s ease;
+        }
+        .guild-card:hover {
+            transform: translateY(-3px);
         }
         .product-item {
+            background: white;
+            border-radius: 10px;
             padding: 1rem;
-            border-bottom: 1px solid #eee;
-            transition: background-color 0.3s ease;
+            margin-bottom: 1rem;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+            border-left: 4px solid #5865f2;
         }
-        .product-item:hover {
-            background-color: #f8f9fa;
-        }
-        .product-item:last-child {
-            border-bottom: none;
-        }
-        .notification-item {
-            padding: 1rem;
-            border-left: 4px solid #667eea;
-            background: #f8f9fa;
-            margin-bottom: 0.5rem;
-            border-radius: 0 10px 10px 0;
-        }
-        .notification-item.unread {
-            background: #e3f2fd;
-            border-left-color: #2196f3;
-        }
-        .guild-badge {
-            background: #667eea;
+        .add-product-btn {
+            background: linear-gradient(45deg, #5865f2, #7289da);
+            border: none;
+            border-radius: 10px;
             color: white;
-            padding: 0.25rem 0.5rem;
-            border-radius: 15px;
-            font-size: 0.8rem;
-            margin-right: 0.5rem;
+            padding: 0.75rem 1.5rem;
+            font-weight: 600;
+            transition: all 0.3s ease;
         }
-        .user-avatar {
-            width: 40px;
-            height: 40px;
-            border-radius: 50%;
-            border: 2px solid #667eea;
+        .add-product-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(88, 101, 242, 0.4);
+            color: white;
         }
     </style>
 </head>
 <body>
     <!-- Navigation -->
-    <nav class="navbar navbar-expand-lg navbar-dark" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+    <nav class="navbar navbar-expand-lg navbar-dark">
         <div class="container">
-            <a class="navbar-brand" href="{{ url_for('dashboard') }}">
-                <i class="fas fa-shopping-cart me-2"></i>
-                Trendyol Bot
+            <a class="navbar-brand" href="/user/dashboard">
+                <i class="fab fa-discord"></i> Kullanıcı Paneli
             </a>
-            
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
                 <span class="navbar-toggler-icon"></span>
             </button>
-            
             <div class="collapse navbar-collapse" id="navbarNav">
                 <ul class="navbar-nav me-auto">
                     <li class="nav-item">
-                        <a class="nav-link active" href="{{ url_for('dashboard') }}">
-                            <i class="fas fa-tachometer-alt me-1"></i>Dashboard
+                        <a class="nav-link active" href="/user/dashboard">
+                            <i class="fas fa-tachometer-alt"></i> Dashboard
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="{{ url_for('my_products') }}">
-                            <i class="fas fa-box me-1"></i>Ürünlerim
+                        <a class="nav-link" href="/products">
+                            <i class="fas fa-box"></i> Ürünlerim
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="{{ url_for('my_notifications') }}">
-                            <i class="fas fa-bell me-1"></i>Bildirimler
-                            {% if stats.unread_notifications > 0 %}
-                                <span class="badge bg-danger">{{ stats.unread_notifications }}</span>
-                            {% endif %}
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="{{ url_for('my_settings') }}">
-                            <i class="fas fa-cog me-1"></i>Ayarlar
+                        <a class="nav-link" href="/notifications">
+                            <i class="fas fa-bell"></i> Bildirimler
                         </a>
                     </li>
                 </ul>
-                
                 <ul class="navbar-nav">
                     <li class="nav-item dropdown">
-                        <a class="nav-link dropdown-toggle d-flex align-items-center" href="#" id="navbarDropdown" role="button" data-bs-toggle="dropdown">
-                            <img src="{{ user.avatar_url or 'https://cdn.discordapp.com/embed/avatars/0.png' }}" 
-                                 class="user-avatar me-2" alt="Avatar" onerror="this.src='https://cdn.discordapp.com/embed/avatars/0.png'">
+                        <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-bs-toggle="dropdown">
+                            <img src="{{ user.avatar_url }}" alt="Avatar" class="rounded-circle me-2" style="width: 30px; height: 30px;">
                             {{ user.username }}
                         </a>
                         <ul class="dropdown-menu">
-                            <li><a class="dropdown-item" href="{{ url_for('my_settings') }}">
-                                <i class="fas fa-user-cog me-2"></i>Profil Ayarları
-                            </a></li>
+                            <li><a class="dropdown-item" href="/profile"><i class="fas fa-user"></i> Profil</a></li>
+                            <li><a class="dropdown-item" href="/settings"><i class="fas fa-cog"></i> Ayarlar</a></li>
                             <li><hr class="dropdown-divider"></li>
-                            <li><a class="dropdown-item" href="{{ url_for('logout') }}">
-                                <i class="fas fa-sign-out-alt me-2"></i>Çıkış Yap
-                            </a></li>
+                            <li><a class="dropdown-item" href="/logout"><i class="fas fa-sign-out-alt"></i> Çıkış</a></li>
                         </ul>
                     </li>
                 </ul>
@@ -146,201 +137,123 @@
     </nav>
 
     <div class="container mt-4">
-        <!-- Flash Messages -->
-        {% with messages = get_flashed_messages(with_categories=true) %}
-            {% if messages %}
-                {% for category, message in messages %}
-                    <div class="alert alert-{{ 'danger' if category == 'error' else category }} alert-dismissible fade show" role="alert">
-                        {{ message }}
-                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                    </div>
-                {% endfor %}
-            {% endif %}
-        {% endwith %}
-
-        <!-- Welcome Section -->
-        <div class="row mb-4">
-            <div class="col-12">
-                <h1 class="mb-1">Hoş geldin, {{ user.username }}! 👋</h1>
-                <p class="text-muted">Kişisel Trendyol takip paneliniz</p>
+        <!-- User Info -->
+        <div class="user-info">
+            <div class="row align-items-center">
+                <div class="col-auto">
+                    <img src="{{ user.avatar_url }}" alt="Avatar" class="user-avatar">
+                </div>
+                <div class="col">
+                    <h4 class="mb-1">Hoş geldin, {{ user.username }}!</h4>
+                    <p class="text-muted mb-0">Discord ID: {{ user.discord_id }}</p>
+                </div>
+                <div class="col-auto">
+                    <button class="add-product-btn" data-bs-toggle="modal" data-bs-target="#addProductModal">
+                        <i class="fas fa-plus"></i> Ürün Ekle
+                    </button>
+                </div>
             </div>
         </div>
 
-        <!-- Statistics Cards -->
+        <!-- Statistics -->
         <div class="row mb-4">
-            <div class="col-md-3">
+            <div class="col-md-6 mb-3">
                 <div class="stat-card">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <div>
-                            <div class="stat-number">{{ stats.total_products }}</div>
-                            <div class="stat-label">Toplam Ürün</div>
+                    <div class="d-flex align-items-center">
+                        <div class="stat-icon products">
+                            <i class="fas fa-box"></i>
                         </div>
-                        <i class="fas fa-box fa-2x opacity-75"></i>
+                        <div class="ms-3">
+                            <h3 class="mb-0">{{ stats.total_products }}</h3>
+                            <p class="text-muted mb-0">Takip Edilen Ürün</p>
+                        </div>
                     </div>
                 </div>
             </div>
-            <div class="col-md-3">
+            <div class="col-md-6 mb-3">
                 <div class="stat-card">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <div>
-                            <div class="stat-number">{{ stats.active_targets }}</div>
-                            <div class="stat-label">Aktif Hedef</div>
+                    <div class="d-flex align-items-center">
+                        <div class="stat-icon guilds">
+                            <i class="fas fa-server"></i>
                         </div>
-                        <i class="fas fa-bullseye fa-2x opacity-75"></i>
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-3">
-                <div class="stat-card">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <div>
-                            <div class="stat-number">{{ stats.unread_notifications }}</div>
-                            <div class="stat-label">Okunmamış Bildirim</div>
+                        <div class="ms-3">
+                            <h3 class="mb-0">{{ stats.total_guilds }}</h3>
+                            <p class="text-muted mb-0">Bağlı Sunucu</p>
                         </div>
-                        <i class="fas fa-bell fa-2x opacity-75"></i>
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-3">
-                <div class="stat-card">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <div>
-                            <div class="stat-number">{{ stats.guild_count }}</div>
-                            <div class="stat-label">Sunucu</div>
-                        </div>
-                        <i class="fas fa-server fa-2x opacity-75"></i>
                     </div>
                 </div>
             </div>
         </div>
 
         <div class="row">
-            <!-- Recent Products -->
-            <div class="col-md-8">
-                <div class="card">
-                    <div class="card-header d-flex justify-content-between align-items-center">
-                        <h5 class="mb-0">
-                            <i class="fas fa-clock me-2"></i>Son Eklenen Ürünler
-                        </h5>
-                        <a href="{{ url_for('my_products') }}" class="btn btn-sm btn-outline-primary">
-                            Tümünü Gör
-                        </a>
-                    </div>
-                    <div class="card-body p-0">
-                        {% if recent_products %}
-                            {% for product in recent_products %}
-                                <div class="product-item">
-                                    <div class="d-flex align-items-center">
-                                        {% if product.image_url %}
-                                            <img src="{{ product.image_url }}" class="me-3" style="width: 60px; height: 60px; object-fit: cover; border-radius: 8px;" alt="Ürün">
-                                        {% else %}
-                                            <div class="me-3 d-flex align-items-center justify-content-center" style="width: 60px; height: 60px; background: #f0f0f0; border-radius: 8px;">
-                                                <i class="fas fa-image text-muted"></i>
-                                            </div>
-                                        {% endif %}
-                                        <div class="flex-grow-1">
-                                            <h6 class="mb-1">{{ product.name[:50] }}{% if product.name|length > 50 %}...{% endif %}</h6>
-                                            <div class="d-flex align-items-center">
-                                                <span class="badge bg-success me-2">{{ "%.2f"|format(product.current_price) }} TL</span>
-                                                {% if product.guild_id %}
-                                                    <span class="guild-badge">{{ product.guild_id[:10] }}</span>
-                                                {% endif %}
-                                            </div>
-                                        </div>
-                                        <div class="text-end">
-                                            <small class="text-muted">{{ product.created_at[:10] }}</small>
-                                        </div>
-                                    </div>
-                                </div>
-                            {% endfor %}
-                        {% else %}
-                            <div class="text-center py-4">
-                                <i class="fas fa-box-open fa-3x text-muted mb-3"></i>
-                                <p class="text-muted">Henüz ürün eklenmemiş</p>
-                                <a href="{{ url_for('my_products') }}" class="btn btn-primary">
-                                    <i class="fas fa-plus me-2"></i>İlk Ürününü Ekle
-                                </a>
+            <!-- Guilds -->
+            <div class="col-md-4 mb-4">
+                <h5 class="mb-3">
+                    <i class="fas fa-server"></i> Sunucularım
+                </h5>
+                {% if guilds %}
+                    {% for guild in guilds %}
+                    <div class="guild-card">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <h6 class="mb-1">{{ guild.guild_name }}</h6>
+                                <small class="text-muted">ID: {{ guild.guild_id }}</small>
                             </div>
-                        {% endif %}
-                    </div>
-                </div>
-            </div>
-
-            <!-- Notifications & Quick Actions -->
-            <div class="col-md-4">
-                <!-- Recent Notifications -->
-                <div class="card mb-3">
-                    <div class="card-header d-flex justify-content-between align-items-center">
-                        <h6 class="mb-0">
-                            <i class="fas fa-bell me-2"></i>Son Bildirimler
-                        </h6>
-                        <a href="{{ url_for('my_notifications') }}" class="btn btn-sm btn-outline-primary">
-                            Tümü
-                        </a>
-                    </div>
-                    <div class="card-body">
-                        {% if unread_notifications %}
-                            {% for notification in unread_notifications %}
-                                <div class="notification-item unread">
-                                    <div class="d-flex justify-content-between align-items-start">
-                                        <div>
-                                            <strong>{{ notification.title or 'Bildirim' }}</strong>
-                                            <p class="mb-1 small">{{ notification.message[:100] }}{% if notification.message|length > 100 %}...{% endif %}</p>
-                                            <small class="text-muted">{{ notification.created_at[:16] }}</small>
-                                        </div>
-                                    </div>
-                                </div>
-                            {% endfor %}
-                        {% else %}
-                            <div class="text-center py-3">
-                                <i class="fas fa-bell-slash fa-2x text-muted mb-2"></i>
-                                <p class="text-muted small mb-0">Yeni bildirim yok</p>
-                            </div>
-                        {% endif %}
-                    </div>
-                </div>
-
-                <!-- Quick Actions -->
-                <div class="card">
-                    <div class="card-header">
-                        <h6 class="mb-0">
-                            <i class="fas fa-bolt me-2"></i>Hızlı İşlemler
-                        </h6>
-                    </div>
-                    <div class="card-body">
-                        <div class="d-grid gap-2">
-                            <button class="btn btn-primary" onclick="showAddProductModal()">
-                                <i class="fas fa-plus me-2"></i>Ürün Ekle
-                            </button>
-                            <a href="{{ url_for('my_notifications') }}" class="btn btn-outline-primary">
-                                <i class="fas fa-bullseye me-2"></i>Fiyat Hedefi Ekle
-                            </a>
-                            <a href="{{ url_for('my_settings') }}" class="btn btn-outline-secondary">
-                                <i class="fas fa-cog me-2"></i>Ayarları Düzenle
+                            <a href="/products?guild_id={{ guild.guild_id }}" class="btn btn-sm btn-outline-primary">
+                                Ürünler
                             </a>
                         </div>
                     </div>
-                </div>
-
-                <!-- User Guilds -->
-                {% if user_guilds %}
-                <div class="card mt-3">
-                    <div class="card-header">
-                        <h6 class="mb-0">
-                            <i class="fas fa-server me-2"></i>Sunucularım
-                        </h6>
+                    {% endfor %}
+                {% else %}
+                    <div class="text-center text-muted p-4">
+                        <i class="fas fa-server fa-2x mb-2"></i>
+                        <p>Henüz sunucu bulunamadı</p>
                     </div>
-                    <div class="card-body">
-                        {% for guild in user_guilds[:5] %}
-                            <div class="d-flex justify-content-between align-items-center mb-2">
-                                <span class="small">{{ guild.guild_name[:20] }}{% if guild.guild_name|length > 20 %}...{% endif %}</span>
-                                <a href="{{ url_for('my_products', guild_id=guild.guild_id) }}" class="btn btn-sm btn-outline-primary">
-                                    Görüntüle
+                {% endif %}
+            </div>
+
+            <!-- Recent Products -->
+            <div class="col-md-8 mb-4">
+                <h5 class="mb-3">
+                    <i class="fas fa-clock"></i> Son Eklenen Ürünler
+                </h5>
+                {% if stats.recent_products %}
+                    {% for product in stats.recent_products %}
+                    <div class="product-item">
+                        <div class="row align-items-center">
+                            <div class="col-auto">
+                                <img src="{{ product.image_url or '/static/img/no-image.png' }}" 
+                                     alt="Ürün" 
+                                     class="rounded" 
+                                     style="width: 60px; height: 60px; object-fit: cover;">
+                            </div>
+                            <div class="col">
+                                <h6 class="mb-1">{{ product.name[:60] }}...</h6>
+                                <small class="text-muted">
+                                    <i class="fas fa-server"></i> {{ product.guild_id }}
+                                </small>
+                            </div>
+                            <div class="col-auto text-end">
+                                <span class="fw-bold text-success fs-5">{{ product.current_price }} ₺</span>
+                                {% if product.original_price and product.original_price != product.current_price %}
+                                <br><small class="text-muted text-decoration-line-through">{{ product.original_price }} ₺</small>
+                                {% endif %}
+                            </div>
+                            <div class="col-auto">
+                                <a href="{{ product.url }}" target="_blank" class="btn btn-sm btn-outline-primary">
+                                    <i class="fas fa-external-link-alt"></i>
                                 </a>
                             </div>
-                        {% endfor %}
+                        </div>
                     </div>
-                </div>
+                    {% endfor %}
+                {% else %}
+                    <div class="text-center text-muted p-4">
+                        <i class="fas fa-inbox fa-3x mb-3"></i>
+                        <h5>Henüz ürün eklenmemiş</h5>
+                        <p>İlk ürününüzü eklemek için yukarıdaki "Ürün Ekle" butonunu kullanın</p>
+                    </div>
                 {% endif %}
             </div>
         </div>
@@ -351,22 +264,23 @@
         <div class="modal-dialog">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title">Yeni Ürün Ekle</h5>
+                    <h5 class="modal-title">
+                        <i class="fas fa-plus"></i> Yeni Ürün Ekle
+                    </h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
                     <form id="addProductForm">
                         <div class="mb-3">
-                            <label for="productUrl" class="form-label">Trendyol Ürün URL'si</label>
-                            <input type="url" class="form-control" id="productUrl" required 
-                                   placeholder="https://www.trendyol.com/...">
+                            <label for="productUrl" class="form-label">Ürün URL'si</label>
+                            <input type="url" class="form-control" id="productUrl" placeholder="https://www.trendyol.com/..." required>
                         </div>
                         <div class="mb-3">
-                            <label for="guildSelect" class="form-label">Sunucu (Opsiyonel)</label>
-                            <select class="form-select" id="guildSelect">
-                                <option value="">Kişisel</option>
-                                {% for guild in user_guilds %}
-                                    <option value="{{ guild.guild_id }}">{{ guild.guild_name }}</option>
+                            <label for="guildSelect" class="form-label">Sunucu Seç</label>
+                            <select class="form-select" id="guildSelect" required>
+                                <option value="">Sunucu seçin...</option>
+                                {% for guild in guilds %}
+                                <option value="{{ guild.guild_id }}">{{ guild.guild_name }}</option>
                                 {% endfor %}
                             </select>
                         </div>
@@ -375,69 +289,62 @@
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">İptal</button>
                     <button type="button" class="btn btn-primary" onclick="addProduct()">
-                        <i class="fas fa-plus me-2"></i>Ekle
+                        <i class="fas fa-plus"></i> Ekle
                     </button>
                 </div>
             </div>
         </div>
     </div>
 
+    <!-- Flash Messages -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            <div class="position-fixed top-0 end-0 p-3" style="z-index: 1050;">
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ 'danger' if category == 'error' else category }} alert-dismissible fade show" role="alert">
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
+                {% endfor %}
+            </div>
+        {% endif %}
+    {% endwith %}
+
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-        function showAddProductModal() {
-            new bootstrap.Modal(document.getElementById('addProductModal')).show();
-        }
-
-        async function addProduct() {
+        function addProduct() {
             const url = document.getElementById('productUrl').value;
             const guildId = document.getElementById('guildSelect').value;
-
-            if (!url) {
-                alert('Lütfen ürün URL\'sini girin');
+            
+            if (!url || !guildId) {
+                alert('Lütfen tüm alanları doldurun!');
                 return;
             }
-
-            try {
-                const response = await fetch('/api/user/add-product', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        url: url,
-                        guild_id: guildId || null
-                    })
-                });
-
-                const result = await response.json();
-
-                if (result.success) {
+            
+            fetch('/api/add_product', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    url: url,
+                    guild_id: guildId
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
                     alert('Ürün başarıyla eklendi!');
-                    bootstrap.Modal.getInstance(document.getElementById('addProductModal')).hide();
                     location.reload();
                 } else {
-                    alert('Hata: ' + result.error);
+                    alert('Hata: ' + data.error);
                 }
-            } catch (error) {
-                alert('Bir hata oluştu: ' + error.message);
-            }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Bir hata oluştu!');
+            });
         }
-
-        // Auto-refresh notifications every 30 seconds
-        setInterval(() => {
-            fetch('/api/user/stats')
-                .then(response => response.json())
-                .then(data => {
-                    if (data.success && data.stats.unread_notifications > 0) {
-                        // Update notification badge
-                        const badge = document.querySelector('.navbar .badge');
-                        if (badge) {
-                            badge.textContent = data.stats.unread_notifications;
-                        }
-                    }
-                })
-                .catch(error => console.log('Stats update error:', error));
-        }, 30000);
     </script>
 </body>
 </html>
